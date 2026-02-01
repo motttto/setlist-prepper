@@ -45,12 +45,13 @@ export default function EditSetlistPage() {
       }
 
       const data = await response.json();
-      const { id, title, eventDate, venue, songs, createdAt, updatedAt } = data.data;
+      const { id, title, eventDate, startTime, venue, songs, createdAt, updatedAt } = data.data;
 
       setSetlist({
         id,
         title,
         eventDate,
+        startTime,
         venue,
         songs,
         createdAt,

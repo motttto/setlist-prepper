@@ -82,8 +82,10 @@ export default function SetlistForm({ initialSetlist, setlistId }: SetlistFormPr
       type,
       title: type === 'pause' ? 'Pause' : type === 'encore' ? '--- ZUGABE ---' : '',
       duration: type === 'pause' ? '15:00' : '',
+      lyrics: '',
       visualDescription: '',
       timingBpm: '',
+      transitionTypes: [],
       transitions: '',
       lighting: '',
       mediaLinks: [],
@@ -376,7 +378,6 @@ export default function SetlistForm({ initialSetlist, setlistId }: SetlistFormPr
                         onSelect={() => setSelectedSongId(song.id)}
                         onDelete={() => deleteSong(song.id)}
                         onDurationChange={(min, sec) => updateSongDuration(song.id, min, sec)}
-                        onTitleChange={(title) => updateSongTitle(song.id, title)}
                       />
                     ))}
                   </div>
