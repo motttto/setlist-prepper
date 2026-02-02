@@ -1,8 +1,13 @@
-// TypeScript Interfaces for Setlist-Prepper
+// TypeScript Interfaces for Setlist-Prepper (Event-Prepper)
 
+// ===========================================
+// NEUE HIERARCHISCHE STRUKTUR: Event > Stage > Act > Song
+// ===========================================
+
+// 'act' is kept for backward compatibility with legacy flat structure
 export type SongType = 'song' | 'pause' | 'encore' | 'act';
 
-export type ActType = 'band' | 'dj' | 'solo' | 'other';
+export type ActType = 'band' | 'dj' | 'solo' | 'workshop' | 'performance' | 'other';
 
 export type TransitionType =
   | 'smooth'      // Fließend
@@ -33,31 +38,74 @@ export interface Song {
   audioCues: string;
   customFields: Record<string, string>;
   muted?: boolean; // Wenn true, wird Song übersprungen (grau) aber nicht gelöscht
-  actType?: ActType; // Nur für type='act': Band, DJ, Solo, etc.
+  actType?: ActType; // Legacy field for backward compatibility with flat structure
 }
 
-export interface Setlist {
+// Act enthält Songs
+export interface Act {
+  id: string;
+  name: string;
+  type: ActType;
+  position: number;
+  isCollapsed?: boolean;
+  description?: string;
+  technicalRequirements?: string;
+  mediaLinks?: string[];
+  songs: Song[];
+}
+
+// Stage enthält Acts
+export interface Stage {
+  id: string;
+  name: string;
+  color?: string;
+  position: number;
+  acts: Act[];
+}
+
+// Event (früher Setlist) - oberste Ebene
+export interface Event {
   id: string;
   title: string;
   eventDate: string | null;
   startTime: string | null; // Format: "20:00"
   venue: string | null;
-  songs: Song[];
+  stages: Stage[];
   createdAt: string;
   updatedAt: string;
 }
 
-export interface SetlistMetadata {
+// Legacy-Alias für Abwärtskompatibilität
+export type Setlist = Event;
+
+// Alte flache Struktur für Migration
+export interface LegacySetlist {
   id: string;
   title: string;
   eventDate: string | null;
   startTime: string | null;
   venue: string | null;
+  songs: (Song & { actType?: ActType; type: SongType | 'act' })[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EventMetadata {
+  id: string;
+  title: string;
+  eventDate: string | null;
+  startTime: string | null;
+  venue: string | null;
+  stageCount: number;
+  actCount: number;
   songCount: number;
   isShared: boolean;
   createdAt: string;
   updatedAt: string;
 }
+
+// Legacy-Alias
+export type SetlistMetadata = EventMetadata;
 
 export type CustomFieldType = 'text' | 'textarea' | 'checkbox' | 'dropdown';
 

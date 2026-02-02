@@ -18,13 +18,12 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { v4 as uuidv4 } from 'uuid';
-import { Song, CustomField, CustomFieldType } from '@/types';
+import { Song, CustomField, CustomFieldType, SongType, ActType } from '@/types';
 import SongListItem from '@/components/SongListItem';
 import SongDetailsPanel from '@/components/SongDetailsPanel';
 import { Button, Input, Card } from '@/components/ui';
 import { Plus, Lock, Music2, Coffee, Star, Clock, AlertTriangle, RefreshCw, User, Loader2, Cloud, CloudOff, Settings, FileDown, X, MapPin, Calendar, Users, Disc3 } from 'lucide-react';
 import { exportSetlistToPdf } from '@/lib/pdfExport';
-import { SongType, ActType } from '@/types';
 import { useRealtimeSetlist } from '@/hooks/useRealtimeSetlist';
 import { PresenceIndicator } from '@/components/PresenceIndicator';
 import { SetlistOperation } from '@/lib/realtimeTypes';
@@ -268,6 +267,8 @@ export default function SharedGigPage() {
       band: 'Neue Band',
       dj: 'Neuer DJ',
       solo: 'Neuer Solo-Act',
+      workshop: 'Neuer Workshop',
+      performance: 'Neue Performance',
       other: 'Neuer Act',
     };
     const newAct: Song = {

@@ -3,24 +3,26 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { SetlistMetadata, Setlist, CustomField } from '@/types';
+import { SetlistMetadata, Event, CustomField, ActType } from '@/types';
 import Header from '@/components/Header';
-import GigsList from '@/components/GigsList';
-import GigSongsPanel from '@/components/GigSongsPanel';
+import EventsList from '@/components/EventsList';
+import EventPanel from '@/components/EventPanel';
 import SettingsPanel from '@/components/SettingsPanel';
+import NewEventWizard from '@/components/NewEventWizard';
 import { ConfirmModal } from '@/components/ui';
 import { ListMusic, Music2, Settings } from 'lucide-react';
+import { createEventFromWizard, countSongsInEvent } from '@/lib/eventMigration';
 
 export default function DashboardPage() {
   const { status } = useSession();
   const router = useRouter();
 
-  // Gigs state
-  const [gigs, setGigs] = useState<SetlistMetadata[]>([]);
-  const [selectedGigId, setSelectedGigId] = useState<string | null>(null);
-  const [selectedSetlist, setSelectedSetlist] = useState<Setlist | null>(null);
-  const [isLoadingGigs, setIsLoadingGigs] = useState(true);
-  const [isLoadingSetlist, setIsLoadingSetlist] = useState(false);
+  // Events state
+  const [events, setEvents] = useState<SetlistMetadata[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+  const [isLoadingEvent, setIsLoadingEvent] = useState(false);
 
   // Custom fields state
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
@@ -34,10 +36,13 @@ export default function DashboardPage() {
 
   // Unsaved changes tracking
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [pendingGigSwitch, setPendingGigSwitch] = useState<string | null>(null);
+  const [pendingEventSwitch, setPendingEventSwitch] = useState<string | null>(null);
 
   // Mobile tab navigation
-  const [mobileTab, setMobileTab] = useState<'gigs' | 'songs' | 'settings'>('songs');
+  const [mobileTab, setMobileTab] = useState<'events' | 'songs' | 'settings'>('songs');
+
+  // New Event Wizard
+  const [showNewEventWizard, setShowNewEventWizard] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -47,50 +52,50 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      loadGigs();
+      loadEvents();
       loadCustomFields();
     }
   }, [status]);
 
-  // Load selected setlist when gig changes
+  // Load selected event when ID changes
   useEffect(() => {
-    if (selectedGigId) {
-      loadSetlist(selectedGigId);
+    if (selectedEventId) {
+      loadEvent(selectedEventId);
     } else {
-      setSelectedSetlist(null);
+      setSelectedEvent(null);
     }
-  }, [selectedGigId]);
+  }, [selectedEventId]);
 
-  const loadGigs = async () => {
+  const loadEvents = async () => {
     try {
       const response = await fetch('/api/setlists');
       const data = await response.json();
       if (data.data) {
-        setGigs(data.data);
-        // Auto-select first gig
-        if (data.data.length > 0 && !selectedGigId) {
-          setSelectedGigId(data.data[0].id);
+        setEvents(data.data);
+        // Auto-select first event
+        if (data.data.length > 0 && !selectedEventId) {
+          setSelectedEventId(data.data[0].id);
         }
       }
     } catch (err) {
-      console.error('Error loading gigs:', err);
+      console.error('Error loading events:', err);
     } finally {
-      setIsLoadingGigs(false);
+      setIsLoadingEvents(false);
     }
   };
 
-  const loadSetlist = async (id: string) => {
-    setIsLoadingSetlist(true);
+  const loadEvent = async (id: string) => {
+    setIsLoadingEvent(true);
     try {
       const response = await fetch(`/api/setlists/${id}`);
       if (response.ok) {
         const data = await response.json();
-        setSelectedSetlist(data.data);
+        setSelectedEvent(data.data);
       }
     } catch (err) {
-      console.error('Error loading setlist:', err);
+      console.error('Error loading event:', err);
     } finally {
-      setIsLoadingSetlist(false);
+      setIsLoadingEvent(false);
     }
   };
 
@@ -108,11 +113,11 @@ export default function DashboardPage() {
     }
   };
 
-  const handleDeleteGig = (id: string, title: string) => {
+  const handleDeleteEvent = (id: string, title: string) => {
     setDeleteConfirm({ id, title });
   };
 
-  const confirmDeleteGig = async () => {
+  const confirmDeleteEvent = async () => {
     if (!deleteConfirm) return;
 
     const { id } = deleteConfirm;
@@ -124,53 +129,67 @@ export default function DashboardPage() {
       });
 
       if (response.ok) {
-        const newGigs = gigs.filter((g) => g.id !== id);
-        setGigs(newGigs);
+        const newEvents = events.filter((e) => e.id !== id);
+        setEvents(newEvents);
 
-        if (selectedGigId === id) {
-          setSelectedGigId(newGigs.length > 0 ? newGigs[0].id : null);
+        if (selectedEventId === id) {
+          setSelectedEventId(newEvents.length > 0 ? newEvents[0].id : null);
         }
       }
     } catch (err) {
-      console.error('Error deleting gig:', err);
+      console.error('Error deleting event:', err);
     }
   };
 
-  const handleNewGig = async () => {
+  const handleNewEvent = () => {
+    setShowNewEventWizard(true);
+  };
+
+  const handleWizardComplete = async (data: {
+    title: string;
+    eventDate: string | null;
+    startTime: string | null;
+    venue: string | null;
+    stages: { name: string; acts: { name: string; type: ActType }[] }[];
+  }) => {
     try {
+      // Create the event structure from wizard data
+      const newEvent = createEventFromWizard(data);
+
       const response = await fetch('/api/setlists', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: 'Neuer Gig',
-          eventDate: null,
-          venue: null,
-          songs: [],
+          title: newEvent.title,
+          eventDate: newEvent.eventDate,
+          startTime: newEvent.startTime,
+          venue: newEvent.venue,
+          stages: newEvent.stages,
         }),
       });
 
       if (response.ok) {
-        const data = await response.json();
-        if (data.data) {
-          await loadGigs();
-          setSelectedGigId(data.data.id);
+        const responseData = await response.json();
+        if (responseData.data) {
+          await loadEvents();
+          setSelectedEventId(responseData.data.id);
         }
       }
     } catch (err) {
-      console.error('Error creating gig:', err);
+      console.error('Error creating event:', err);
     }
   };
 
-  const handleSaveSetlist = async (setlist: Setlist) => {
-    const response = await fetch(`/api/setlists/${setlist.id}`, {
+  const handleSaveEvent = async (event: Event) => {
+    const response = await fetch(`/api/setlists/${event.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        title: setlist.title,
-        eventDate: setlist.eventDate || null,
-        startTime: setlist.startTime || null,
-        venue: setlist.venue || null,
-        songs: setlist.songs,
+        title: event.title,
+        eventDate: event.eventDate || null,
+        startTime: event.startTime || null,
+        venue: event.venue || null,
+        stages: event.stages,
       }),
     });
 
@@ -179,29 +198,29 @@ export default function DashboardPage() {
       throw new Error(data.error || 'Fehler beim Speichern');
     }
 
-    // Update local gigs list
-    setGigs(gigs.map((g) =>
-      g.id === setlist.id
+    // Update local events list
+    setEvents(events.map((e) =>
+      e.id === event.id
         ? {
-            ...g,
-            title: setlist.title,
-            eventDate: setlist.eventDate,
-            startTime: setlist.startTime,
-            venue: setlist.venue,
-            songCount: setlist.songs.filter(s => (s.type || 'song') === 'song').length,
+            ...e,
+            title: event.title,
+            eventDate: event.eventDate,
+            startTime: event.startTime,
+            venue: event.venue,
+            songCount: countSongsInEvent(event),
           }
-        : g
+        : e
     ));
   };
 
-  const handleEditGig = (id: string) => {
-    if (id === selectedGigId) {
+  const handleEditEvent = (id: string) => {
+    if (id === selectedEventId) {
       // Already selected, just open dialog
       setEditDialogTrigger((t) => t + 1);
     } else {
       // Select and open dialog
-      setSelectedGigId(id);
-      // Trigger dialog after setlist loads
+      setSelectedEventId(id);
+      // Trigger dialog after event loads
       setTimeout(() => setEditDialogTrigger((t) => t + 1), 100);
     }
   };
@@ -249,32 +268,32 @@ export default function DashboardPage() {
 
       {/* Desktop: Three Column Layout */}
       <main className="hidden lg:flex flex-1 overflow-hidden">
-        {/* Left Column - Gigs */}
+        {/* Left Column - Events */}
         <div className="w-72 flex-shrink-0 border-r border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 overflow-hidden">
-          <GigsList
-            gigs={gigs}
-            selectedGigId={selectedGigId}
-            onSelectGig={(id) => {
-              if (hasUnsavedChanges && id !== selectedGigId) {
-                setPendingGigSwitch(id);
+          <EventsList
+            events={events}
+            selectedEventId={selectedEventId}
+            onSelectEvent={(id) => {
+              if (hasUnsavedChanges && id !== selectedEventId) {
+                setPendingEventSwitch(id);
               } else {
-                setSelectedGigId(id);
+                setSelectedEventId(id);
               }
             }}
-            onDeleteGig={handleDeleteGig}
-            onNewGig={handleNewGig}
-            onEditGig={handleEditGig}
-            isLoading={isLoadingGigs}
+            onDeleteEvent={handleDeleteEvent}
+            onNewEvent={handleNewEvent}
+            onEditEvent={handleEditEvent}
+            isLoading={isLoadingEvents}
           />
         </div>
 
-        {/* Middle Column - Songs & Details */}
+        {/* Middle Column - Event Panel */}
         <div className="flex-1 min-w-0 p-4 overflow-hidden">
-          <GigSongsPanel
-            setlist={selectedSetlist}
+          <EventPanel
+            event={selectedEvent}
             customFields={customFields}
-            onSave={handleSaveSetlist}
-            isLoading={isLoadingSetlist}
+            onSave={handleSaveEvent}
+            isLoading={isLoadingEvent}
             openEditDialogTrigger={editDialogTrigger}
             onUnsavedChanges={setHasUnsavedChanges}
           />
@@ -295,24 +314,24 @@ export default function DashboardPage() {
       <main className="lg:hidden flex-1 flex flex-col overflow-hidden">
         {/* Mobile Content Area */}
         <div className="flex-1 overflow-hidden">
-          {/* Gigs Tab */}
-          {mobileTab === 'gigs' && (
+          {/* Events Tab */}
+          {mobileTab === 'events' && (
             <div className="h-full bg-white dark:bg-zinc-900 p-3 overflow-hidden">
-              <GigsList
-                gigs={gigs}
-                selectedGigId={selectedGigId}
-                onSelectGig={(id) => {
-                  if (hasUnsavedChanges && id !== selectedGigId) {
-                    setPendingGigSwitch(id);
+              <EventsList
+                events={events}
+                selectedEventId={selectedEventId}
+                onSelectEvent={(id) => {
+                  if (hasUnsavedChanges && id !== selectedEventId) {
+                    setPendingEventSwitch(id);
                   } else {
-                    setSelectedGigId(id);
+                    setSelectedEventId(id);
                     setMobileTab('songs');
                   }
                 }}
-                onDeleteGig={handleDeleteGig}
-                onNewGig={handleNewGig}
-                onEditGig={handleEditGig}
-                isLoading={isLoadingGigs}
+                onDeleteEvent={handleDeleteEvent}
+                onNewEvent={handleNewEvent}
+                onEditEvent={handleEditEvent}
+                isLoading={isLoadingEvents}
               />
             </div>
           )}
@@ -320,11 +339,11 @@ export default function DashboardPage() {
           {/* Songs Tab */}
           {mobileTab === 'songs' && (
             <div className="h-full p-2 sm:p-3 overflow-hidden">
-              <GigSongsPanel
-                setlist={selectedSetlist}
+              <EventPanel
+                event={selectedEvent}
                 customFields={customFields}
-                onSave={handleSaveSetlist}
-                isLoading={isLoadingSetlist}
+                onSave={handleSaveEvent}
+                isLoading={isLoadingEvent}
                 openEditDialogTrigger={editDialogTrigger}
                 onUnsavedChanges={setHasUnsavedChanges}
               />
@@ -348,15 +367,15 @@ export default function DashboardPage() {
         <div className="flex-shrink-0 bg-white dark:bg-zinc-900 border-t border-zinc-300 dark:border-zinc-800 px-2 py-1 safe-area-inset-bottom">
           <div className="flex justify-around">
             <button
-              onClick={() => setMobileTab('gigs')}
+              onClick={() => setMobileTab('events')}
               className={`flex flex-col items-center py-2 px-4 rounded-lg transition-colors ${
-                mobileTab === 'gigs'
+                mobileTab === 'events'
                   ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30'
                   : 'text-zinc-500 dark:text-zinc-400'
               }`}
             >
               <ListMusic className="w-5 h-5" />
-              <span className="text-xs mt-0.5">Gigs</span>
+              <span className="text-xs mt-0.5">Events</span>
             </button>
             <button
               onClick={() => setMobileTab('songs')}
@@ -384,12 +403,19 @@ export default function DashboardPage() {
         </div>
       </main>
 
-      {/* Delete Gig Confirmation Modal */}
+      {/* New Event Wizard */}
+      <NewEventWizard
+        isOpen={showNewEventWizard}
+        onClose={() => setShowNewEventWizard(false)}
+        onComplete={handleWizardComplete}
+      />
+
+      {/* Delete Event Confirmation Modal */}
       <ConfirmModal
         isOpen={!!deleteConfirm}
         onClose={() => setDeleteConfirm(null)}
-        onConfirm={confirmDeleteGig}
-        title="Gig löschen"
+        onConfirm={confirmDeleteEvent}
+        title="Event löschen"
         message={`Möchtest du "${deleteConfirm?.title || ''}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`}
         confirmText="Ja, löschen"
         cancelText="Abbrechen"
@@ -398,15 +424,15 @@ export default function DashboardPage() {
 
       {/* Unsaved Changes Warning Modal */}
       <ConfirmModal
-        isOpen={!!pendingGigSwitch}
-        onClose={() => setPendingGigSwitch(null)}
+        isOpen={!!pendingEventSwitch}
+        onClose={() => setPendingEventSwitch(null)}
         onConfirm={() => {
           setHasUnsavedChanges(false);
-          setSelectedGigId(pendingGigSwitch);
-          setPendingGigSwitch(null);
+          setSelectedEventId(pendingEventSwitch);
+          setPendingEventSwitch(null);
         }}
         title="Ungespeicherte Änderungen"
-        message="Du hast ungespeicherte Änderungen. Möchtest du wirklich zu einem anderen Gig wechseln? Deine Änderungen gehen verloren."
+        message="Du hast ungespeicherte Änderungen. Möchtest du wirklich zu einem anderen Event wechseln? Deine Änderungen gehen verloren."
         confirmText="Ja, wechseln"
         cancelText="Zurück"
         variant="warning"

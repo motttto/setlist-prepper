@@ -17,8 +17,28 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { v4 as uuidv4 } from 'uuid';
-import { Song, CustomField, CustomFieldType, Setlist, SongType } from '@/types';
+import { Song, CustomField, CustomFieldType, Setlist, SongType, Event, LegacySetlist } from '@/types';
 import SongListItem from './SongListItem';
+
+// Helper to extract songs from either old or new format
+function getSongsFromSetlist(setlist: Event | LegacySetlist | undefined): Song[] {
+  if (!setlist) return [];
+  // Check if it's new format with stages
+  if ('stages' in setlist && Array.isArray(setlist.stages)) {
+    const songs: Song[] = [];
+    for (const stage of setlist.stages) {
+      for (const act of stage.acts || []) {
+        songs.push(...(act.songs || []));
+      }
+    }
+    return songs;
+  }
+  // Old format with direct songs array
+  if ('songs' in setlist && Array.isArray((setlist as LegacySetlist).songs)) {
+    return (setlist as LegacySetlist).songs;
+  }
+  return [];
+}
 import SongDetailsPanel from './SongDetailsPanel';
 import { Button, Input, Card } from './ui';
 import { Plus, Save, ArrowLeft, Settings2, X, Clock, Coffee, Star, Check, Cloud, CloudOff, Loader2, FileDown, Music2 } from 'lucide-react';
@@ -48,7 +68,7 @@ export default function SetlistForm({
   const [eventDate, setEventDate] = useState(initialSetlist?.eventDate || '');
   const [startTime, setStartTime] = useState(initialSetlist?.startTime || '');
   const [venue, setVenue] = useState(initialSetlist?.venue || '');
-  const [songs, setSongs] = useState<Song[]>(initialSetlist?.songs || []);
+  const [songs, setSongs] = useState<Song[]>(getSongsFromSetlist(initialSetlist));
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   const [isSaving, setIsSaving] = useState(false);

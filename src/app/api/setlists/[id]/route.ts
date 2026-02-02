@@ -30,10 +30,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Parse songs from JSON
+    // Parse data from JSON - support both old and new format
     let songs = [];
+    let stages = undefined;
     try {
-      songs = JSON.parse(setlist.encrypted_data || '[]');
+      const data = JSON.parse(setlist.encrypted_data || '[]');
+      if (Array.isArray(data)) {
+        // Old format: flat array of songs
+        songs = data;
+      } else if (data.stages) {
+        // New format: stages > acts > songs
+        stages = data.stages;
+      }
     } catch {
       songs = [];
     }
@@ -46,6 +54,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         startTime: setlist.start_time,
         venue: setlist.venue,
         songs,
+        stages,
         createdAt: setlist.created_at,
         updatedAt: setlist.updated_at,
         lastEditedBy: setlist.last_edited_by,
@@ -71,7 +80,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const { id } = await params;
     const body = await request.json();
-    const { title, eventDate, startTime, venue, songs } = body;
+    const { title, eventDate, startTime, venue, songs, stages } = body;
 
     if (!title) {
       return NextResponse.json(
@@ -80,8 +89,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Store songs as JSON string
-    const songsData = JSON.stringify(songs || []);
+    // Store data as JSON string - support both old (songs array) and new (stages) format
+    let dataToStore: string;
+    if (stages) {
+      // New format: store stages array
+      dataToStore = JSON.stringify({ stages });
+    } else {
+      // Old format: store songs array
+      dataToStore = JSON.stringify(songs || []);
+    }
 
     // Benutzer-Name für Edit-Tracking
     const editorName = session.user.name || session.user.email || 'Unbekannt';
@@ -93,7 +109,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       eventDate || null,
       startTime || null,
       venue || null,
-      songsData,
+      dataToStore,
       editorName
     );
 

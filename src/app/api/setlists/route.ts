@@ -21,8 +21,18 @@ export async function GET() {
     const setlistMetadata = setlists.map((s) => {
       let songCount = 0;
       try {
-        const songs = JSON.parse(s.encrypted_data || '[]');
-        songCount = Array.isArray(songs) ? songs.length : 0;
+        const data = JSON.parse(s.encrypted_data || '[]');
+        if (Array.isArray(data)) {
+          // Old format: flat array of songs
+          songCount = data.filter((song: { type?: string }) => (song.type || 'song') === 'song').length;
+        } else if (data.stages) {
+          // New format: stages > acts > songs
+          for (const stage of data.stages) {
+            for (const act of stage.acts || []) {
+              songCount += (act.songs || []).filter((song: { type?: string }) => (song.type || 'song') === 'song').length;
+            }
+          }
+        }
       } catch {
         songCount = 0;
       }
@@ -60,7 +70,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, eventDate, startTime, venue, songs } = body;
+    const { title, eventDate, startTime, venue, songs, stages } = body;
 
     if (!title) {
       return NextResponse.json(
@@ -69,8 +79,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Store songs as JSON string
-    const songsData = JSON.stringify(songs || []);
+    // Store data as JSON string - support both old (songs array) and new (stages) format
+    let dataToStore: string;
+    if (stages) {
+      // New format: store stages array
+      dataToStore = JSON.stringify({ stages });
+    } else {
+      // Old format: store songs array
+      dataToStore = JSON.stringify(songs || []);
+    }
 
     const setlist = await createSetlist(
       session.user.id,
@@ -78,7 +95,7 @@ export async function POST(request: NextRequest) {
       eventDate || null,
       startTime || null,
       venue || null,
-      songsData
+      dataToStore
     );
 
     return NextResponse.json({

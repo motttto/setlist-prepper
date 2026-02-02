@@ -3,15 +3,16 @@
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Setlist } from '@/types';
+import { Event } from '@/types';
 import SetlistForm from '@/components/SetlistForm';
 import { Card } from '@/components/ui';
+import { migrateToEventStructure } from '@/lib/eventMigration';
 
 export default function EditSetlistPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const params = useParams();
-  const [setlist, setSetlist] = useState<Setlist | null>(null);
+  const [setlist, setSetlist] = useState<Event | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -45,18 +46,9 @@ export default function EditSetlistPage() {
       }
 
       const data = await response.json();
-      const { id, title, eventDate, startTime, venue, songs, createdAt, updatedAt } = data.data;
-
-      setSetlist({
-        id,
-        title,
-        eventDate,
-        startTime,
-        venue,
-        songs,
-        createdAt,
-        updatedAt,
-      });
+      // Use migration to handle both old (songs) and new (stages) format
+      const migratedEvent = migrateToEventStructure(data.data);
+      setSetlist(migratedEvent);
     } catch (err) {
       console.error('Error loading setlist:', err);
       setError(err instanceof Error ? err.message : 'Fehler beim Laden');
