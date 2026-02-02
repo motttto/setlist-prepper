@@ -46,6 +46,7 @@ export default function SetlistForm({
   const router = useRouter();
   const [title, setTitle] = useState(initialSetlist?.title || '');
   const [eventDate, setEventDate] = useState(initialSetlist?.eventDate || '');
+  const [startTime, setStartTime] = useState(initialSetlist?.startTime || '');
   const [venue, setVenue] = useState(initialSetlist?.venue || '');
   const [songs, setSongs] = useState<Song[]>(initialSetlist?.songs || []);
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
@@ -198,6 +199,7 @@ export default function SetlistForm({
       const payload = {
         title,
         eventDate: eventDate || null,
+        startTime: startTime || null,
         venue: venue || null,
         songs,
       };
@@ -223,7 +225,7 @@ export default function SetlistForm({
     } finally {
       setIsSaving(false);
     }
-  }, [setlistId, title, eventDate, venue, songs]);
+  }, [setlistId, title, eventDate, startTime, venue, songs]);
 
   // Track changes and trigger auto-save (only for local changes, not remote, only when editing existing setlist)
   useEffect(() => {
@@ -250,7 +252,7 @@ export default function SetlistForm({
         clearTimeout(autoSaveTimeoutRef.current);
       }
     };
-  }, [title, eventDate, venue, songs, setlistId]);
+  }, [title, eventDate, startTime, venue, songs, setlistId]);
 
   const createEmptySong = useCallback(
     (position: number, type: SongType = 'song'): Song => ({
@@ -480,6 +482,7 @@ export default function SetlistForm({
       const payload = {
         title,
         eventDate: eventDate || null,
+        startTime: startTime || null,
         venue: venue || null,
         songs,
       };
@@ -568,7 +571,7 @@ export default function SetlistForm({
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() => exportSetlistToPdf({ title, eventDate, songs })}
+                onClick={() => exportSetlistToPdf({ title, eventDate, startTime, venue, songs })}
               >
                 <FileDown className="w-4 h-4 mr-1" />
                 PDF
@@ -605,7 +608,7 @@ export default function SetlistForm({
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
             Event-Details
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Input
               label="Gig-Titel"
               value={title}
@@ -618,6 +621,12 @@ export default function SetlistForm({
               type="date"
               value={eventDate}
               onChange={(e) => setEventDate(e.target.value)}
+            />
+            <Input
+              label="Startzeit"
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
             />
             <Input
               label="Venue"
