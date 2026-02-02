@@ -824,17 +824,33 @@ export default function SetlistForm({
 
       {/* Fixed Save Button - bottom bar */}
       <div className="flex-shrink-0 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-700 p-3 sm:p-4">
-        <div className="flex justify-end gap-2 sm:gap-3">
-          <Link href="/dashboard">
-            <Button variant="secondary" size="sm">
-              <span className="hidden sm:inline">Abbrechen</span>
-              <span className="sm:hidden">×</span>
+        <div className="flex justify-between">
+          {/* Left side - PDF Export */}
+          <div>
+            {songs.length > 0 && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => exportSetlistToPdf({ title, eventDate, startTime, venue, songs })}
+              >
+                <FileDown className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">PDF Export</span>
+              </Button>
+            )}
+          </div>
+          {/* Right side - Cancel & Save */}
+          <div className="flex gap-2 sm:gap-3">
+            <Link href="/dashboard">
+              <Button variant="secondary" size="sm">
+                <span className="hidden sm:inline">Abbrechen</span>
+                <span className="sm:hidden">×</span>
+              </Button>
+            </Link>
+            <Button onClick={handleSave} isLoading={isSaving} size="sm">
+              <Save className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Speichern</span>
             </Button>
-          </Link>
-          <Button onClick={handleSave} isLoading={isSaving} size="sm">
-            <Save className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Speichern</span>
-          </Button>
+          </div>
         </div>
       </div>
     </div>
