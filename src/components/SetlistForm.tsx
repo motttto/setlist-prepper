@@ -524,15 +524,15 @@ export default function SetlistForm({
 
       <div className="max-w-7xl mx-auto p-4 pb-24">
         {/* Page Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+          <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
             <Link href="/dashboard">
               <Button variant="ghost" size="sm">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Zurück
+                <ArrowLeft className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Zurück</span>
               </Button>
             </Link>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+            <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
               {setlistId ? 'Gig bearbeiten' : 'Neuer Gig'}
             </h1>
             {/* Live Save Status Indicator */}
@@ -541,24 +541,16 @@ export default function SetlistForm({
                 {saveStatus === 'saving' && (
                   <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
                     <Loader2 className="w-3 h-3 animate-spin" />
-                    Speichert...
                   </span>
                 )}
                 {saveStatus === 'saved' && (
                   <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded-full">
                     <Cloud className="w-3 h-3" />
-                    Gespeichert
                   </span>
                 )}
                 {saveStatus === 'error' && (
                   <span className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
                     <CloudOff className="w-3 h-3" />
-                    Fehler
-                  </span>
-                )}
-                {saveStatus === 'idle' && lastSavedAt && (
-                  <span className="text-xs text-zinc-400 dark:text-zinc-500">
-                    Zuletzt gespeichert {lastSavedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 )}
               </div>
@@ -643,21 +635,20 @@ export default function SetlistForm({
             </div>
 
             {/* Add Buttons */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex gap-2">
-                <Button onClick={addSong} size="sm">
-                  <Plus className="w-4 h-4 mr-1" />
-                  Song
-                </Button>
-                <Button onClick={addPause} variant="secondary" size="sm">
-                  <Coffee className="w-4 h-4 mr-1" />
-                  Pause
-                </Button>
-                <Button onClick={addEncore} variant="secondary" size="sm">
-                  <Star className="w-4 h-4 mr-1" />
-                  Zugabe
-                </Button>
-              </div>
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <Button onClick={addSong} size="sm">
+                <Plus className="w-4 h-4 sm:mr-1" />
+                <span className="hidden sm:inline">Song</span>
+              </Button>
+              <Button onClick={addPause} variant="secondary" size="sm">
+                <Coffee className="w-4 h-4 sm:mr-1" />
+                <span className="hidden sm:inline">Pause</span>
+              </Button>
+              <Button onClick={addEncore} variant="secondary" size="sm">
+                <Star className="w-4 h-4 sm:mr-1" />
+                <span className="hidden sm:inline">Zugabe</span>
+              </Button>
+              <div className="flex-1" />
               {/* PDF Export Button */}
               <Button
                 variant="secondary"
@@ -665,8 +656,8 @@ export default function SetlistForm({
                 onClick={() => exportSetlistToPdf({ title, eventDate, startTime, venue, songs })}
                 disabled={songs.length === 0}
               >
-                <FileDown className="w-4 h-4 mr-1" />
-                PDF
+                <FileDown className="w-4 h-4 sm:mr-1" />
+                <span className="hidden sm:inline">PDF</span>
               </Button>
             </div>
 
