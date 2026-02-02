@@ -592,7 +592,35 @@ export default function SharedGigPage() {
     );
   }
 
-  // Main Editor View - Three Column Layout like Admin Panel
+  // Helper function to calculate end time
+  const calculateEndTime = () => {
+    if (!startTime) return '';
+    const [hours, minutes] = startTime.split(':').map(Number);
+    let totalSeconds = 0;
+    songs.forEach((song) => {
+      if (song.duration) {
+        const parts = song.duration.split(':');
+        if (parts.length === 2) {
+          totalSeconds += parseInt(parts[0] || '0') * 60 + parseInt(parts[1] || '0');
+        }
+      }
+    });
+    const totalMinutes = hours * 60 + minutes + Math.ceil(totalSeconds / 60);
+    const endHours = Math.floor(totalMinutes / 60) % 24;
+    const endMins = totalMinutes % 60;
+    return `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+  };
+
+  const formatEventDate = (dateString: string | null) => {
+    if (!dateString) return null;
+    return new Date(dateString).toLocaleDateString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  };
+
+  // Main Editor View - Layout like Admin Panel
   return (
     <div className="h-screen flex flex-col bg-zinc-100 dark:bg-zinc-900">
       {/* Header */}
@@ -604,72 +632,100 @@ export default function SharedGigPage() {
                 <Music2 className="w-6 h-6 text-white" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                    {title || 'Geteilter Gig'}
-                  </h1>
-                  {/* Save Status Indicator */}
-                  {saveStatus === 'saving' && (
-                    <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      Speichert...
-                    </span>
-                  )}
-                  {saveStatus === 'saved' && (
-                    <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded-full">
-                      <Cloud className="w-3 h-3" />
-                      Gespeichert
-                    </span>
-                  )}
-                  {saveStatus === 'error' && !hasConflict && (
-                    <span className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
-                      <CloudOff className="w-3 h-3" />
-                      Fehler
-                    </span>
-                  )}
-                </div>
+                <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                  Setlist Prepper
+                </h1>
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  Du: {editorName}
-                  {saveStatus === 'idle' && lastSavedAt && (
-                    <span className="ml-2 text-xs">
-                      · Gespeichert {lastSavedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  )}
+                  Geteilter Gig · {editorName}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-zinc-500 dark:text-zinc-400 hidden sm:inline">Active Users:</span>
                 <PresenceIndicator
                   users={presenceUsers}
                   currentUserId={sessionId}
                   isConnected={isConnected}
                 />
               </div>
-              {updatedAt && (
-                <div className="text-right text-sm text-zinc-500 dark:text-zinc-400 hidden sm:block">
-                  <p>Zuletzt: {formatDate(updatedAt)}</p>
-                  {lastEditedBy && <p>von {lastEditedBy}</p>}
-                </div>
-              )}
             </div>
           </div>
         </div>
       </header>
 
-      {/* Three Column Layout like Admin Panel */}
+      {/* Two Column Layout like Admin Panel */}
       <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* Left Column - Event Details & Song List */}
-        <div className="w-full lg:w-80 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-4 overflow-y-auto">
+        {/* Main Content Area - Songs Panel */}
+        <div className="flex-1 min-w-0 p-4 overflow-hidden flex flex-col">
+          {/* Compact Header with Gig Info */}
+          <div className="flex-shrink-0 mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                {title || 'Unbenannter Gig'}
+              </h2>
+              {/* Save Status Indicator */}
+              {saveStatus === 'saving' && (
+                <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Speichert...
+                </span>
+              )}
+              {saveStatus === 'saved' && (
+                <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded-full">
+                  <Cloud className="w-3 h-3" />
+                  Gespeichert
+                </span>
+              )}
+              {saveStatus === 'error' && !hasConflict && (
+                <span className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
+                  <CloudOff className="w-3 h-3" />
+                  Fehler
+                </span>
+              )}
+              {saveStatus === 'idle' && lastSavedAt && (
+                <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                  Zuletzt gespeichert {lastSavedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-4 text-xs text-zinc-500 dark:text-zinc-400">
+              {eventDate && (
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" />
+                  {formatEventDate(eventDate)}
+                </span>
+              )}
+              {startTime && (
+                <span className="flex items-center gap-1">
+                  {startTime} Uhr
+                </span>
+              )}
+              {venue && (
+                <span className="flex items-center gap-1">
+                  {venue}
+                </span>
+              )}
+              {songs.length > 0 && (
+                <>
+                  <span className="flex items-center gap-1">
+                    <Music2 className="w-3.5 h-3.5" />
+                    {songs.filter(s => (s.type || 'song') === 'song').length} Songs
+                  </span>
+                  <span>Dauer {calculateTotalDuration()}</span>
+                  {startTime && <span>Ende {calculateEndTime()}</span>}
+                </>
+              )}
+            </div>
+          </div>
+
           {/* Conflict Warning */}
           {hasConflict && (
-            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <div className="flex-shrink-0 mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-xs text-amber-700 dark:text-amber-300">
-                    Konflikt erkannt. Bitte neu laden.
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    Konflikt erkannt. Jemand anderes hat den Gig bearbeitet.
                   </p>
                   <Button
                     onClick={handleReload}
@@ -687,144 +743,112 @@ export default function SharedGigPage() {
           )}
 
           {saveError && !hasConflict && (
-            <div className="mb-4 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-xs">
-              {saveError}
+            <div className="flex-shrink-0 mb-3 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm flex items-center justify-between">
+              <span>{saveError}</span>
+              <button onClick={() => setSaveError('')} className="text-red-400 hover:text-red-600">×</button>
             </div>
           )}
-
-          {/* Event Details - Compact */}
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Event-Details</h3>
-            <div className="space-y-2">
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Gig-Titel"
-                className="text-sm"
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  type="date"
-                  value={eventDate}
-                  onChange={(e) => setEventDate(e.target.value)}
-                  className="text-sm"
-                />
-                <Input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className="text-sm"
-                />
-              </div>
-              <Input
-                value={venue}
-                onChange={(e) => setVenue(e.target.value)}
-                placeholder="Venue"
-                className="text-sm"
-              />
-            </div>
-          </div>
-
-          {/* Song List Header */}
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-              Songs ({songs.filter(s => (s.type || 'song') === 'song').length})
-            </h3>
-            <span className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {calculateTotalDuration()}
-            </span>
-          </div>
 
           {/* Add Buttons */}
-          <div className="flex gap-1 mb-3">
-            <Button onClick={addSong} size="sm" className="flex-1 text-xs">
-              <Plus className="w-3 h-3 mr-1" />
+          <div className="flex-shrink-0 flex gap-2 mb-4">
+            <Button onClick={addSong} size="sm">
+              <Plus className="w-4 h-4 mr-1" />
               Song
             </Button>
-            <Button onClick={addPause} variant="secondary" size="sm" className="text-xs">
-              <Coffee className="w-3 h-3" />
+            <Button onClick={addPause} variant="secondary" size="sm">
+              <Coffee className="w-4 h-4 mr-1" />
+              Pause
             </Button>
-            <Button onClick={addEncore} variant="secondary" size="sm" className="text-xs">
-              <Star className="w-3 h-3" />
+            <Button onClick={addEncore} variant="secondary" size="sm">
+              <Star className="w-4 h-4 mr-1" />
+              Zugabe
             </Button>
           </div>
 
-          {/* Song List */}
-          {songs.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
-                Noch keine Songs
-              </p>
-              <Button onClick={addSong} size="sm">
-                <Plus className="w-3 h-3 mr-1" />
-                Hinzufuegen
-              </Button>
-            </div>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={songs.map((s) => s.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="space-y-1">
-                  {songs.map((song) => (
-                    <SongListItem
-                      key={song.id}
-                      song={song}
-                      isSelected={selectedSongId === song.id}
-                      onSelect={() => setSelectedSongId(song.id)}
-                      onDelete={() => deleteSong(song.id)}
-                      onDurationChange={(mins, secs) => updateSongDuration(song.id, mins, secs)}
-                    />
-                  ))}
+          {/* Content Area - Two Column Grid like Admin Panel */}
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-0 overflow-hidden">
+            {/* Song List */}
+            <div className="overflow-y-auto min-h-0">
+              {songs.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-zinc-500 dark:text-zinc-400 mb-4">
+                    Noch keine Songs
+                  </p>
+                  <Button onClick={addSong} size="sm">
+                    <Plus className="w-4 h-4 mr-1" />
+                    Ersten Song hinzufuegen
+                  </Button>
                 </div>
-              </SortableContext>
-            </DndContext>
-          )}
+              ) : (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={songs.map((s) => s.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-2">
+                      {songs.map((song) => (
+                        <SongListItem
+                          key={song.id}
+                          song={song}
+                          isSelected={selectedSongId === song.id}
+                          onSelect={() => setSelectedSongId(song.id)}
+                          onDelete={() => deleteSong(song.id)}
+                          onDurationChange={(mins, secs) => updateSongDuration(song.id, mins, secs)}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              )}
+            </div>
+
+            {/* Song Details */}
+            <div className="overflow-y-auto min-h-0 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">
+              <SongDetailsPanel
+                song={selectedSong}
+                customFields={customFields}
+                onChange={(updatedSong) => {
+                  if (selectedSongId) {
+                    updateSong(selectedSongId, updatedSong);
+                  }
+                }}
+              />
+            </div>
+          </div>
         </div>
 
-        {/* Middle Column - Song Details */}
-        <div className="flex-1 min-w-0 p-4 overflow-y-auto">
-          <Card className="h-full overflow-hidden">
-            <SongDetailsPanel
-              song={selectedSong}
-              customFields={customFields}
-              onChange={(updatedSong) => {
-                if (selectedSongId) {
-                  updateSong(selectedSongId, updatedSong);
-                }
-              }}
-            />
-          </Card>
-        </div>
-
-        {/* Right Column - Custom Fields */}
+        {/* Right Column - Settings / Custom Fields */}
         <div className="w-full lg:w-72 flex-shrink-0 border-t lg:border-t-0 lg:border-l border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-4 overflow-y-auto">
           <div className="flex items-center gap-2 mb-4">
             <Settings className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
             <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-              Eigene Felder ({customFields.length})
+              Einstellungen
             </h3>
           </div>
 
-          {fieldError && (
-            <div className="mb-3 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-xs">
-              {fieldError}
-            </div>
-          )}
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-4">
+            Eigene Felder fuer jeden Song
+          </p>
 
-          {/* Add New Field */}
-          <div className="mb-4 p-3 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">
+          {/* Add New Field Section */}
+          <div className="mb-4">
+            <h4 className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-2">
+              Neues Feld hinzufuegen
+            </h4>
+            {fieldError && (
+              <div className="mb-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-xs">
+                {fieldError}
+              </div>
+            )}
             <div className="space-y-2">
               <Input
                 value={newFieldName}
                 onChange={(e) => setNewFieldName(e.target.value)}
-                placeholder="Feldname..."
+                placeholder="Feldname eingeben..."
                 onKeyDown={(e) => e.key === 'Enter' && handleAddCustomField()}
                 className="text-sm"
               />
@@ -846,29 +870,34 @@ export default function SharedGigPage() {
           </div>
 
           {/* Existing Fields */}
-          {customFields.length === 0 ? (
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center py-4">
-              Noch keine eigenen Felder
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {customFields.map((field) => (
-                <div
-                  key={field.id}
-                  className="p-2 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700"
-                >
-                  <span className="text-sm text-zinc-900 dark:text-zinc-100">
-                    {field.fieldName}
-                  </span>
-                  <span className="ml-2 text-xs text-zinc-400">
-                    {field.fieldType === 'textarea' ? 'Textbereich' : 'Text'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="mb-4">
+            <h4 className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-2">
+              Eigene Felder ({customFields.length})
+            </h4>
+            {customFields.length === 0 ? (
+              <p className="text-xs text-zinc-400 dark:text-zinc-500 py-2">
+                Noch keine eigenen Felder erstellt
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {customFields.map((field) => (
+                  <div
+                    key={field.id}
+                    className="p-2 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700"
+                  >
+                    <span className="font-medium text-sm text-zinc-900 dark:text-zinc-100 truncate block">
+                      {field.fieldName}
+                    </span>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {field.fieldType === 'textarea' ? 'Textbereich' : 'Textfeld'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
-          <p className="mt-4 text-xs text-zinc-400 dark:text-zinc-500">
+          <p className="text-xs text-zinc-400 dark:text-zinc-500 border-t border-zinc-200 dark:border-zinc-700 pt-3">
             Felder werden mit dem Admin synchronisiert.
           </p>
         </div>
