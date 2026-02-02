@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import { createSupabaseBrowserClient } from '@/lib/supabase';
 import {
   PresenceUser,
@@ -29,7 +29,7 @@ export function useRealtimeSetlist({
   const [presenceUsers, setPresenceUsers] = useState<PresenceUser[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
-  const supabaseRef = useRef(createSupabaseBrowserClient());
+  const supabaseRef = useRef<SupabaseClient | null>(null);
 
   // Aktuelle Presence-Daten für diesen User
   const currentPresenceRef = useRef<Partial<PresenceUser>>({
@@ -39,6 +39,16 @@ export function useRealtimeSetlist({
 
   useEffect(() => {
     if (!enabled || !setlistId) return;
+
+    // Lazy init Supabase client only when enabled
+    try {
+      if (!supabaseRef.current) {
+        supabaseRef.current = createSupabaseBrowserClient();
+      }
+    } catch (err) {
+      console.error('[Realtime] Failed to create Supabase client:', err);
+      return;
+    }
 
     const supabase = supabaseRef.current;
     const channelName = `setlist:${setlistId}`;
