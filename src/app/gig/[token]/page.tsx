@@ -22,7 +22,7 @@ import { Song, CustomField } from '@/types';
 import SongListItem from '@/components/SongListItem';
 import SongDetailsPanel from '@/components/SongDetailsPanel';
 import { Button, Input, Card } from '@/components/ui';
-import { Plus, Lock, Music2, Coffee, Star, Clock, AlertTriangle, RefreshCw, User, Loader2, Cloud, CloudOff } from 'lucide-react';
+import { Plus, Lock, Music2, Coffee, Star, Clock, AlertTriangle, RefreshCw, User, Loader2, Cloud, CloudOff, Settings } from 'lucide-react';
 import { SongType } from '@/types';
 import { useRealtimeSetlist } from '@/hooks/useRealtimeSetlist';
 import { PresenceIndicator } from '@/components/PresenceIndicator';
@@ -55,6 +55,12 @@ export default function SharedGigPage() {
   const [hasConflict, setHasConflict] = useState(false);
   const [sessionId] = useState(() => uuidv4());
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+
+  // Custom field creation
+  const [newFieldName, setNewFieldName] = useState('');
+  const [newFieldType, setNewFieldType] = useState<'text' | 'textarea'>('text');
+  const [isAddingField, setIsAddingField] = useState(false);
+  const [fieldError, setFieldError] = useState('');
 
   const isRemoteUpdateRef = useRef(false);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -466,6 +472,38 @@ export default function SharedGigPage() {
     });
   };
 
+  const handleAddCustomField = async () => {
+    if (!newFieldName.trim()) return;
+
+    setIsAddingField(true);
+    setFieldError('');
+
+    try {
+      const response = await fetch(`/api/gig/${token}/custom-fields`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: storedPassword,
+          fieldName: newFieldName.trim(),
+          fieldType: newFieldType,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Fehler beim Erstellen');
+      }
+
+      setCustomFields([...customFields, data.data]);
+      setNewFieldName('');
+    } catch (err) {
+      setFieldError(err instanceof Error ? err.message : 'Fehler beim Erstellen');
+    } finally {
+      setIsAddingField(false);
+    }
+  };
+
   const selectedSong = songs.find((s) => s.id === selectedSongId) || null;
 
   // Password Entry View
@@ -688,6 +726,65 @@ export default function SharedGigPage() {
               placeholder="z.B. Olympiastadion Berlin"
             />
           </div>
+        </Card>
+
+        {/* Custom Fields Section */}
+        <Card className="mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Settings className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+              Eigene Felder ({customFields.length})
+            </h2>
+          </div>
+
+          {fieldError && (
+            <div className="mb-3 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
+              {fieldError}
+            </div>
+          )}
+
+          {/* Existing Fields */}
+          {customFields.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {customFields.map((field) => (
+                <span
+                  key={field.id}
+                  className="px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full text-sm text-zinc-700 dark:text-zinc-300"
+                >
+                  {field.fieldName}
+                  <span className="ml-1 text-xs text-zinc-400">
+                    ({field.fieldType === 'textarea' ? 'Textbereich' : 'Text'})
+                  </span>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Add New Field */}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Input
+              value={newFieldName}
+              onChange={(e) => setNewFieldName(e.target.value)}
+              placeholder="Neues Feld hinzufuegen..."
+              onKeyDown={(e) => e.key === 'Enter' && handleAddCustomField()}
+              className="flex-1"
+            />
+            <select
+              value={newFieldType}
+              onChange={(e) => setNewFieldType(e.target.value as 'text' | 'textarea')}
+              className="px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
+            >
+              <option value="text">Textfeld</option>
+              <option value="textarea">Textbereich</option>
+            </select>
+            <Button onClick={handleAddCustomField} isLoading={isAddingField} size="sm">
+              <Plus className="w-4 h-4 mr-1" />
+              Hinzufuegen
+            </Button>
+          </div>
+          <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+            Diese Felder erscheinen bei allen Songs und werden mit dem Admin-Account synchronisiert.
+          </p>
         </Card>
 
         {/* Two-Column Layout */}
