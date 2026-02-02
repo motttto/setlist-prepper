@@ -457,6 +457,7 @@ export default function SetlistForm({
             <PresenceIndicator
               users={presenceUsers}
               currentUserId={editorId}
+              currentUserName={editorName}
               isConnected={isConnected}
             />
           )}

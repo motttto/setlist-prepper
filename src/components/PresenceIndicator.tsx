@@ -13,65 +13,40 @@ export function PresenceIndicator({
   users,
   currentUserId,
   isConnected,
-}: PresenceIndicatorProps) {
+  currentUserName,
+}: PresenceIndicatorProps & { currentUserName?: string }) {
   const otherUsers = users.filter((u) => u.id !== currentUserId);
 
-  return (
-    <div className="flex items-center gap-3">
-      {/* Connection Status */}
-      <div className="flex items-center gap-1.5">
-        {isConnected ? (
-          <>
-            <Wifi className="w-4 h-4 text-green-500" />
-            <span className="text-xs text-green-600 dark:text-green-400">Live</span>
-          </>
-        ) : (
-          <>
-            <WifiOff className="w-4 h-4 text-zinc-400" />
-            <span className="text-xs text-zinc-500">Offline</span>
-          </>
-        )}
-      </div>
+  // Build user list: current user first, then others
+  const allUserNames: string[] = [];
+  if (currentUserName) {
+    allUserNames.push(currentUserName);
+  }
+  otherUsers.forEach((u) => allUserNames.push(u.name));
 
-      {/* Other Users */}
-      {otherUsers.length > 0 && (
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-zinc-500 dark:text-zinc-400">
-            Bearbeiten:
+  return (
+    <div className="flex items-center gap-2">
+      {/* Connection Status */}
+      {isConnected ? (
+        <>
+          <Wifi className="w-4 h-4 text-green-500" />
+          <span className="text-xs text-green-600 dark:text-green-400">Live</span>
+        </>
+      ) : (
+        <>
+          <WifiOff className="w-4 h-4 text-zinc-400" />
+          <span className="text-xs text-zinc-500">Offline</span>
+        </>
+      )}
+
+      {/* User List */}
+      {allUserNames.length > 0 && (
+        <>
+          <span className="text-xs text-zinc-400">·</span>
+          <span className="text-xs text-zinc-600 dark:text-zinc-400">
+            Aktiv: {allUserNames.join(', ')}
           </span>
-          <div className="flex -space-x-2">
-            {otherUsers.slice(0, 5).map((user) => (
-              <div
-                key={user.id}
-                className="relative group"
-              >
-                <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium text-white border-2 border-white dark:border-zinc-900 shadow-sm cursor-default"
-                  style={{ backgroundColor: user.color }}
-                  title={user.name}
-                >
-                  {user.name.charAt(0).toUpperCase()}
-                </div>
-                {/* Tooltip */}
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 dark:bg-zinc-700 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                  {user.name}
-                  {user.currentSongId && (
-                    <span className="text-zinc-400"> • bearbeitet Song</span>
-                  )}
-                </div>
-                {/* Active Editing Indicator */}
-                {user.currentSongId && (
-                  <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border border-white dark:border-zinc-900" />
-                )}
-              </div>
-            ))}
-          </div>
-          {otherUsers.length > 5 && (
-            <span className="text-xs text-zinc-500 dark:text-zinc-400">
-              +{otherUsers.length - 5}
-            </span>
-          )}
-        </div>
+        </>
       )}
     </div>
   );

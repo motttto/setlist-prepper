@@ -640,15 +640,12 @@ export default function SharedGigPage() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <PresenceIndicator
-                  users={presenceUsers}
-                  currentUserId={sessionId}
-                  isConnected={isConnected}
-                />
-              </div>
-            </div>
+            <PresenceIndicator
+              users={presenceUsers}
+              currentUserId={sessionId}
+              currentUserName={editorName}
+              isConnected={isConnected}
+            />
           </div>
         </div>
       </header>
