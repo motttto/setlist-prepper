@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Song } from '@/types';
@@ -50,45 +50,46 @@ export default function SongListItem({
 
   const { minutes, seconds } = parseDuration();
 
-  // Track if this is the first keystroke after focus (to overwrite)
-  const [minutesJustFocused, setMinutesJustFocused] = useState(false);
-  const [secondsJustFocused, setSecondsJustFocused] = useState(false);
-  const minutesRef = useRef<HTMLInputElement>(null);
-  const secondsRef = useRef<HTMLInputElement>(null);
+  // Local state for editing - allows typing without immediate formatting
+  const [editingSeconds, setEditingSeconds] = useState<string | null>(null);
+  const [editingMinutes, setEditingMinutes] = useState<string | null>(null);
 
   const handleMinutesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.replace(/\D/g, '');
-
-    // If just focused, overwrite with only the new digit
-    if (minutesJustFocused && val.length > 1) {
-      val = val.slice(-1); // Take only the last typed character
-    }
-    setMinutesJustFocused(false);
-
+    const val = e.target.value.replace(/\D/g, '');
+    setEditingMinutes(val);
     onDurationChange(val, seconds);
   };
 
   const handleSecondsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value.replace(/\D/g, '');
-
-    // If just focused, overwrite with only the new digit
-    if (secondsJustFocused && val.length > 1) {
-      val = val.slice(-1); // Take only the last typed character
-    }
-    setSecondsJustFocused(false);
-
     if (parseInt(val) > 59) val = '59';
-    onDurationChange(minutes, val.padStart(2, '0'));
+    setEditingSeconds(val);
+    onDurationChange(minutes, val || '00');
   };
 
   const handleMinutesFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.target.select();
-    setMinutesJustFocused(true);
+    setEditingMinutes(minutes);
+    // Select all after a tick so the value is set
+    setTimeout(() => e.target.select(), 0);
   };
 
   const handleSecondsFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.target.select();
-    setSecondsJustFocused(true);
+    setEditingSeconds(seconds);
+    setTimeout(() => e.target.select(), 0);
+  };
+
+  const handleMinutesBlur = () => {
+    setEditingMinutes(null);
+  };
+
+  const handleSecondsBlur = () => {
+    // On blur, format with padStart and save
+    const val = editingSeconds || seconds || '0';
+    const formatted = val.padStart(2, '0');
+    if (formatted !== seconds) {
+      onDurationChange(minutes, formatted);
+    }
+    setEditingSeconds(null);
   };
 
   // Styling based on type
@@ -148,24 +149,22 @@ export default function SongListItem({
         {/* Duration: min / sec */}
         <div className="flex items-center gap-1 text-xs" onClick={(e) => e.stopPropagation()}>
           <input
-            ref={minutesRef}
             type="text"
-            value={minutes}
+            value={editingMinutes !== null ? editingMinutes : minutes}
             onChange={handleMinutesChange}
             onFocus={handleMinutesFocus}
-            onBlur={() => setMinutesJustFocused(false)}
+            onBlur={handleMinutesBlur}
             placeholder="0"
             className="w-8 text-center bg-zinc-100 dark:bg-zinc-700 border-none rounded px-1 py-0.5 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             maxLength={3}
           />
           <span className="text-zinc-400">:</span>
           <input
-            ref={secondsRef}
             type="text"
-            value={seconds}
+            value={editingSeconds !== null ? editingSeconds : seconds}
             onChange={handleSecondsChange}
             onFocus={handleSecondsFocus}
-            onBlur={() => setSecondsJustFocused(false)}
+            onBlur={handleSecondsBlur}
             placeholder="00"
             className="w-8 text-center bg-zinc-100 dark:bg-zinc-700 border-none rounded px-1 py-0.5 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             maxLength={2}
