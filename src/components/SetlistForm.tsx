@@ -580,16 +580,15 @@ export default function SetlistForm({
                   )}
                 </>
               )}
-              {/* PDF Export Button - icon only on mobile */}
+              {/* PDF Export Button */}
               {songs.length > 0 && (
                 <Button
                   variant="secondary"
                   size="sm"
                   onClick={() => exportSetlistToPdf({ title, eventDate, startTime, venue, songs })}
-                  className="px-2 sm:px-3"
                 >
-                  <FileDown className="w-4 h-4" />
-                  <span className="hidden sm:inline ml-1">PDF</span>
+                  <FileDown className="w-4 h-4 mr-1 sm:mr-2" />
+                  PDF
                 </Button>
               )}
               {/* Presence Indicator */}
