@@ -233,20 +233,20 @@ export default function DashboardPage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-900">
+      <div className="min-h-screen flex items-center justify-center bg-zinc-200 dark:bg-zinc-950">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex flex-col bg-zinc-100 dark:bg-zinc-900">
+    <div className="h-screen flex flex-col bg-zinc-200 dark:bg-zinc-950">
       <Header />
 
       {/* Three Column Layout */}
       <main className="flex-1 flex overflow-hidden">
         {/* Left Column - Gigs */}
-        <div className="w-72 flex-shrink-0 border-r border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-4 overflow-hidden">
+        <div className="w-72 flex-shrink-0 border-r border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 overflow-hidden">
           <GigsList
             gigs={gigs}
             selectedGigId={selectedGigId}
@@ -277,7 +277,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Right Column - Settings */}
-        <div className="w-72 flex-shrink-0 border-l border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-4 overflow-hidden">
+        <div className="w-72 flex-shrink-0 border-l border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 overflow-hidden">
           <SettingsPanel
             customFields={customFields}
             onAddField={handleAddCustomField}

@@ -82,7 +82,7 @@ export default function SettingsPanel({
             <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
               Einstellungen
             </h2>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">
               Eigene Felder für jeden Song
             </p>
           </div>
@@ -99,8 +99,8 @@ export default function SettingsPanel({
       )}
 
       {/* Add New Field */}
-      <div className="flex-shrink-0 mb-4 p-3 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">
-        <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+      <div className="flex-shrink-0 mb-4 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">
+        <h3 className="text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-3">
           Neues Feld hinzufügen
         </h3>
         <div className="space-y-2">
@@ -129,16 +129,16 @@ export default function SettingsPanel({
 
       {/* Existing Fields */}
       <div className="flex-1 overflow-y-auto min-h-0">
-        <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+        <h3 className="text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-2">
           Eigene Felder ({customFields.length})
         </h3>
 
         {customFields.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
               Noch keine eigenen Felder
             </p>
-            <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
+            <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
               Füge Felder hinzu, die bei jedem Song erscheinen
             </p>
           </div>
@@ -147,13 +147,13 @@ export default function SettingsPanel({
             {customFields.map((field) => (
               <div
                 key={field.id}
-                className="flex items-center justify-between p-3 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700"
+                className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700"
               >
                 <div className="flex-1 min-w-0">
                   <span className="font-medium text-zinc-900 dark:text-zinc-100 truncate block">
                     {field.fieldName}
                   </span>
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                  <span className="text-xs text-zinc-600 dark:text-zinc-400">
                     {field.fieldType === 'textarea' ? 'Textbereich' : 'Textfeld'}
                   </span>
                 </div>

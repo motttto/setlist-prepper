@@ -119,8 +119,8 @@ export default function GigsList({
               onClick={() => onSelectGig(gig.id)}
               className={`p-3 rounded-lg border cursor-pointer transition-all ${
                 selectedGigId === gig.id
-                  ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-300 dark:border-indigo-700'
-                  : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-indigo-300 dark:hover:border-indigo-700'
+                  ? 'bg-indigo-100 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-600'
+                  : 'bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-indigo-300 dark:hover:border-indigo-600'
               }`}
             >
               <div className="flex items-start justify-between gap-2">
@@ -142,7 +142,7 @@ export default function GigsList({
 
                   <div className="mt-1 space-y-0.5">
                     {(gig.eventDate || gig.startTime) && (
-                      <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                      <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400">
                         <Calendar className="w-3 h-3" />
                         {formatDate(gig.eventDate)}
                         {gig.startTime && (
@@ -154,7 +154,7 @@ export default function GigsList({
                       </div>
                     )}
                     {gig.venue && (
-                      <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                      <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400">
                         <MapPin className="w-3 h-3" />
                         <span className="truncate">{gig.venue}</span>
                       </div>

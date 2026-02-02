@@ -8,7 +8,7 @@ export default function Header() {
   const { data: session } = useSession();
 
   return (
-    <header className="flex-shrink-0 h-12 bg-white dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700 px-4 flex items-center justify-between">
+    <header className="flex-shrink-0 h-12 bg-white dark:bg-zinc-900 border-b border-zinc-300 dark:border-zinc-800 px-4 flex items-center justify-between">
       <Link href="/dashboard" className="flex items-center gap-2">
         <div className="p-1.5 bg-indigo-600 rounded-md">
           <Music2 className="w-4 h-4 text-white" />
@@ -19,7 +19,7 @@ export default function Header() {
       </Link>
 
       <div className="flex items-center gap-3">
-        <span className="text-xs text-zinc-400 dark:text-zinc-500 hidden sm:block">
+        <span className="text-xs text-zinc-600 dark:text-zinc-400 hidden sm:block">
           {session?.user?.email}
         </span>
         <button
