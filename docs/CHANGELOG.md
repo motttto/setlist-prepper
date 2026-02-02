@@ -13,6 +13,9 @@ Alle wesentlichen Änderungen am Projekt werden hier dokumentiert.
 - Meta-Tags für SEO (OpenGraph, Twitter Cards, Keywords)
 - Kompakte mobile Buttons (nur Icons)
 - Gig-Info Zeile auf Mobile
+- **Keyboard Shortcuts**: Cmd/Ctrl+S zum Speichern, Cmd/Ctrl+N für neuen Song
+- **Song Duplizieren**: Songs können jetzt dupliziert werden (Copy-Button)
+- **Songs Stummschalten**: Songs können gemuted werden - bleiben in der Liste, werden aber übersprungen und nicht in die Gesamtdauer gezählt (durchgestrichene Darstellung)
 
 ### Geändert
 - Landing Page Features aktualisiert (6 Features)

@@ -4,13 +4,15 @@ import { useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Song } from '@/types';
-import { GripVertical, Trash2, Coffee, Star, Music } from 'lucide-react';
+import { GripVertical, Trash2, Coffee, Star, Music, Copy, VolumeX, Volume2 } from 'lucide-react';
 
 interface SongListItemProps {
   song: Song;
   isSelected: boolean;
   onSelect: () => void;
   onDelete: () => void;
+  onDuplicate: () => void;
+  onToggleMute: () => void;
   onDurationChange: (minutes: string, seconds: string) => void;
 }
 
@@ -19,6 +21,8 @@ export default function SongListItem({
   isSelected,
   onSelect,
   onDelete,
+  onDuplicate,
+  onToggleMute,
   onDurationChange,
 }: SongListItemProps) {
   const {
@@ -33,7 +37,7 @@ export default function SongListItem({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.5 : song.muted ? 0.5 : 1,
   };
 
   const songType = song.type || 'song';
@@ -142,7 +146,7 @@ export default function SongListItem({
         </div>
 
         {/* Title (click to select) */}
-        <span className="flex-1 min-w-0 text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
+        <span className={`flex-1 min-w-0 text-sm font-medium truncate ${song.muted ? 'text-zinc-400 dark:text-zinc-500 line-through' : 'text-zinc-900 dark:text-zinc-100'}`}>
           {song.title || (songType === 'pause' ? 'Pause' : songType === 'encore' ? 'Zugabe' : 'Song-Titel')}
         </span>
 
@@ -171,16 +175,44 @@ export default function SongListItem({
           />
         </div>
 
-        {/* Delete */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          className="p-1 text-zinc-400 hover:text-red-500"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-0.5">
+          {/* Mute Toggle */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleMute();
+            }}
+            className={`p-1 ${song.muted ? 'text-amber-500 hover:text-amber-600' : 'text-zinc-400 hover:text-zinc-600'}`}
+            title={song.muted ? 'Aktivieren' : 'Stummschalten'}
+          >
+            {song.muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+          </button>
+
+          {/* Duplicate */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDuplicate();
+            }}
+            className="p-1 text-zinc-400 hover:text-indigo-500"
+            title="Duplizieren"
+          >
+            <Copy className="w-4 h-4" />
+          </button>
+
+          {/* Delete */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="p-1 text-zinc-400 hover:text-red-500"
+            title="Löschen"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   );

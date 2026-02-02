@@ -329,6 +329,8 @@ export default function SetlistForm({
   const calculateTotalDuration = () => {
     let totalSeconds = 0;
     songs.forEach((song) => {
+      // Skip muted songs in duration calculation
+      if (song.muted) return;
       if (song.duration) {
         const parts = song.duration.split(':');
         if (parts.length === 2) {
@@ -410,6 +412,54 @@ export default function SetlistForm({
       broadcastOperation({
         type: 'DELETE_SONG',
         songId,
+      });
+    }
+  };
+
+  const duplicateSong = (songId: string) => {
+    const songToDuplicate = songs.find((s) => s.id === songId);
+    if (!songToDuplicate) return;
+
+    const songIndex = songs.findIndex((s) => s.id === songId);
+    const duplicatedSong: Song = {
+      ...songToDuplicate,
+      id: uuidv4(),
+      position: songIndex + 2,
+    };
+
+    const newSongs = [
+      ...songs.slice(0, songIndex + 1),
+      duplicatedSong,
+      ...songs.slice(songIndex + 1),
+    ];
+    const updatedSongs = newSongs.map((song, i) => ({ ...song, position: i + 1 }));
+    setSongs(updatedSongs);
+    setSelectedSongId(duplicatedSong.id);
+
+    // Broadcast to others
+    if (setlistId) {
+      broadcastOperation({
+        type: 'ADD_SONG',
+        song: duplicatedSong,
+        position: songIndex + 2,
+      });
+    }
+  };
+
+  const toggleMute = (songId: string) => {
+    const song = songs.find((s) => s.id === songId);
+    if (!song) return;
+
+    const newMutedState = !song.muted;
+    setSongs(songs.map((s) => (s.id === songId ? { ...s, muted: newMutedState } : s)));
+
+    // Broadcast to others
+    if (setlistId) {
+      broadcastOperation({
+        type: 'UPDATE_SONG',
+        songId,
+        field: 'muted',
+        value: newMutedState,
       });
     }
   };
@@ -700,6 +750,8 @@ export default function SetlistForm({
                             }
                           }}
                           onDelete={() => deleteSong(song.id)}
+                          onDuplicate={() => duplicateSong(song.id)}
+                          onToggleMute={() => toggleMute(song.id)}
                           onDurationChange={(min, sec) => updateSongDuration(song.id, min, sec)}
                         />
                       ))}

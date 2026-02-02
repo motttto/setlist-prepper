@@ -36,6 +36,9 @@ import {
   CloudOff,
   FileDown,
   X,
+  Copy,
+  VolumeX,
+  Volume2,
 } from 'lucide-react';
 import { exportSetlistToPdf } from '@/lib/pdfExport';
 
@@ -217,11 +220,11 @@ export default function GigSongsPanel({
     []
   );
 
-  const addSong = () => {
+  const addSong = useCallback(() => {
     const newSong = createEmptySong(songs.length + 1, 'song');
     setSongs([...songs, newSong]);
     setSelectedSongId(newSong.id);
-  };
+  }, [songs, createEmptySong]);
 
   const addPause = () => {
     const newPause = createEmptySong(songs.length + 1, 'pause');
@@ -238,6 +241,8 @@ export default function GigSongsPanel({
   const getTotalSeconds = () => {
     let totalSeconds = 0;
     songs.forEach((song) => {
+      // Skip muted songs in duration calculation
+      if (song.muted) return;
       if (song.duration) {
         const parts = song.duration.split(':');
         if (parts.length === 2) {
@@ -290,6 +295,31 @@ export default function GigSongsPanel({
     }
   };
 
+  const duplicateSong = (songId: string) => {
+    const songToDuplicate = songs.find((s) => s.id === songId);
+    if (!songToDuplicate) return;
+
+    const songIndex = songs.findIndex((s) => s.id === songId);
+    const duplicatedSong: Song = {
+      ...songToDuplicate,
+      id: uuidv4(),
+      position: songIndex + 2,
+    };
+
+    const newSongs = [
+      ...songs.slice(0, songIndex + 1),
+      duplicatedSong,
+      ...songs.slice(songIndex + 1),
+    ];
+    const updatedSongs = newSongs.map((song, i) => ({ ...song, position: i + 1 }));
+    setSongs(updatedSongs);
+    setSelectedSongId(duplicatedSong.id);
+  };
+
+  const toggleMute = (songId: string) => {
+    setSongs(songs.map((s) => (s.id === songId ? { ...s, muted: !s.muted } : s)));
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -305,7 +335,7 @@ export default function GigSongsPanel({
   };
 
   // Manual save (clears auto-save timeout and saves immediately)
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!title.trim()) {
       setError('Bitte gib einen Titel ein');
       return;
@@ -317,7 +347,26 @@ export default function GigSongsPanel({
     }
 
     await performAutoSave();
-  };
+  }, [title, performAutoSave]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd/Ctrl + S = Save
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        handleSave();
+      }
+      // Cmd/Ctrl + N = New Song
+      if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+        e.preventDefault();
+        addSong();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleSave, addSong]);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return null;
@@ -525,6 +574,8 @@ export default function GigSongsPanel({
                         }
                       }}
                       onDelete={() => deleteSong(song.id)}
+                      onDuplicate={() => duplicateSong(song.id)}
+                      onToggleMute={() => toggleMute(song.id)}
                       onDurationChange={(min, sec) => updateSongDuration(song.id, min, sec)}
                     />
                   ))}

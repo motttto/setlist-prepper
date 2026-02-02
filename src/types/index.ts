@@ -30,6 +30,7 @@ export interface Song {
   stageDirections: string;
   audioCues: string;
   customFields: Record<string, string>;
+  muted?: boolean; // Wenn true, wird Song übersprungen (grau) aber nicht gelöscht
 }
 
 export interface Setlist {
