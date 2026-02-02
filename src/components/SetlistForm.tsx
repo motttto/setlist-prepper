@@ -55,7 +55,6 @@ export default function SetlistForm({
   const [error, setError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [showFieldManager, setShowFieldManager] = useState(false);
-  const [newFieldName, setNewFieldName] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [showMobileDetails, setShowMobileDetails] = useState(false);
@@ -440,26 +439,21 @@ export default function SetlistForm({
     }
   };
 
-  const addCustomField = async (fieldData?: { fieldName: string; fieldType: CustomFieldType; dropdownOptions?: string[] }) => {
-    const fieldName = fieldData?.fieldName || newFieldName.trim();
-    const fieldType = fieldData?.fieldType || 'text';
-    const dropdownOptions = fieldData?.dropdownOptions;
+  const addCustomField = async (fieldData: { fieldName: string; fieldType: CustomFieldType; dropdownOptions?: string[] }) => {
+    const { fieldName, fieldType, dropdownOptions } = fieldData;
 
-    if (!fieldName) return;
+    if (!fieldName.trim()) return;
 
     try {
       const response = await fetch('/api/custom-fields', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fieldName, fieldType, dropdownOptions }),
+        body: JSON.stringify({ fieldName: fieldName.trim(), fieldType, dropdownOptions }),
       });
 
       const data = await response.json();
       if (data.data) {
         setCustomFields([...customFields, data.data]);
-        if (!fieldData) {
-          setNewFieldName('');
-        }
       }
     } catch (err) {
       console.error('Error adding custom field:', err);
@@ -824,48 +818,30 @@ export default function SetlistForm({
               </div>
             </div>
 
-            {/* Custom Fields */}
+            {/* Custom Fields Overview */}
             <div className="border-t border-zinc-200 dark:border-zinc-700 pt-4">
               <h4 className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-3 uppercase tracking-wider">
                 Eigene Felder
               </h4>
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <Input
-                    value={newFieldName}
-                    onChange={(e) => setNewFieldName(e.target.value)}
-                    placeholder="Neues Feld..."
-                    onKeyDown={(e) => e.key === 'Enter' && addCustomField()}
-                    className="text-sm"
-                  />
-                  <Button onClick={() => addCustomField()} size="sm">
-                    <Plus className="w-4 h-4" />
-                  </Button>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
+                Felder im Song-Info-Panel erstellen/loeschen.
+              </p>
+              {customFields.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {customFields.map((field) => (
+                    <div
+                      key={field.id}
+                      className="px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full text-sm text-zinc-700 dark:text-zinc-300"
+                    >
+                      {field.fieldName}
+                    </div>
+                  ))}
                 </div>
-
-                {customFields.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {customFields.map((field) => (
-                      <div
-                        key={field.id}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full text-sm"
-                      >
-                        <span className="text-zinc-700 dark:text-zinc-300">{field.fieldName}</span>
-                        <button
-                          onClick={() => deleteCustomField(field.id)}
-                          className="text-zinc-400 hover:text-red-500"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-zinc-500">
-                    Noch keine eigenen Felder.
-                  </p>
-                )}
-              </div>
+              ) : (
+                <p className="text-xs text-zinc-500">
+                  Noch keine eigenen Felder.
+                </p>
+              )}
             </div>
           </div>
         </div>

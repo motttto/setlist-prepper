@@ -896,37 +896,10 @@ export default function SharedGigPage() {
           )}
         </div>
 
-        {/* Right Column - Settings / Custom Fields - Collapsible on mobile */}
-        <div className={`w-full lg:w-72 flex-shrink-0 border-t lg:border-t-0 lg:border-l border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-y-auto ${showSettings ? '' : 'lg:block'}`}>
-          {/* Mobile toggle */}
-          <button
-            onClick={() => setShowSettings(!showSettings)}
-            className="lg:hidden w-full flex items-center justify-between p-3 text-left"
-          >
-            <div className="flex items-center gap-2">
-              <Settings className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
-                Eigene Felder
-              </span>
-              {customFields.length > 0 && (
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                  ({customFields.length} Felder)
-                </span>
-              )}
-            </div>
-            <svg
-              className={`w-4 h-4 text-zinc-500 transition-transform ${showSettings ? 'rotate-180' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-
-          {/* Settings content - always visible on desktop, toggle on mobile */}
-          <div className={`p-4 pt-0 lg:pt-4 ${showSettings ? 'block' : 'hidden lg:block'}`}>
-            <div className="hidden lg:flex items-center gap-2 mb-4">
+        {/* Right Column - Settings / Custom Fields - Desktop only */}
+        <div className="hidden lg:block lg:w-72 flex-shrink-0 border-l border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-y-auto">
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-4">
               <Settings className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
                 Eigene Felder
@@ -934,48 +907,13 @@ export default function SharedGigPage() {
             </div>
 
             <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-4">
-              Eigene Felder fuer jeden Song
+              Felder koennen direkt im Song-Info-Panel erstellt werden.
             </p>
 
-            {/* Add New Field Section */}
+            {/* Existing Fields - read-only overview */}
             <div className="mb-4">
               <h4 className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                Neues Feld hinzufuegen
-              </h4>
-              {fieldError && (
-                <div className="mb-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-xs">
-                  {fieldError}
-                </div>
-              )}
-              <div className="space-y-2">
-                <Input
-                  value={newFieldName}
-                  onChange={(e) => setNewFieldName(e.target.value)}
-                  placeholder="Feldname eingeben..."
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddCustomField()}
-                  className="text-sm"
-                />
-                <div className="flex gap-2">
-                  <select
-                    value={newFieldType}
-                    onChange={(e) => setNewFieldType(e.target.value as 'text' | 'textarea')}
-                    className="flex-1 px-2 py-1.5 text-xs rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
-                  >
-                    <option value="text">Textfeld</option>
-                    <option value="textarea">Textbereich</option>
-                  </select>
-                  <Button onClick={() => handleAddCustomField()} isLoading={isAddingField} size="sm" className="text-xs">
-                    <Plus className="w-3 h-3 mr-1" />
-                    Hinzufuegen
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Existing Fields */}
-            <div className="mb-4">
-              <h4 className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                Eigene Felder ({customFields.length})
+                Vorhandene Felder ({customFields.length})
               </h4>
               {customFields.length === 0 ? (
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 py-2">
@@ -992,7 +930,9 @@ export default function SharedGigPage() {
                         {field.fieldName}
                       </span>
                       <span className="text-xs text-zinc-600 dark:text-zinc-400">
-                        {field.fieldType === 'textarea' ? 'Textbereich' : 'Textfeld'}
+                        {field.fieldType === 'textarea' ? 'Textbereich' :
+                         field.fieldType === 'checkbox' ? 'Checkbox' :
+                         field.fieldType === 'dropdown' ? 'Dropdown' : 'Textfeld'}
                       </span>
                     </div>
                   ))}
