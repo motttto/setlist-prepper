@@ -1,30 +1,35 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { createBrowserClient } from '@supabase/ssr';
 
-// Server-side environment variables (only available on server)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+// Server-side Supabase client (for API routes only)
+// WARNING: This file should ONLY be imported in server-side code (API routes, server components)
 
-// Server-side Supabase client (for API routes) - uses Service Role Key to bypass RLS
-export const supabase = createClient(supabaseUrl, supabaseServiceKey);
+let serverClient: SupabaseClient | null = null;
 
-// Browser-side Supabase client - singleton pattern
-let browserClient: SupabaseClient | null = null;
+function getServerClient(): SupabaseClient {
+  if (serverClient) return serverClient;
 
-export function createSupabaseBrowserClient() {
-  if (browserClient) return browserClient;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  // Read env vars at runtime for browser
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !anonKey) {
-    throw new Error('Missing Supabase environment variables');
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Missing Supabase server environment variables');
   }
 
-  browserClient = createBrowserClient(url, anonKey);
-  return browserClient;
+  serverClient = createClient(supabaseUrl, supabaseServiceKey);
+  return serverClient;
 }
+
+// Use a Proxy to lazily initialize the client
+export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
+  get(_, prop: keyof SupabaseClient) {
+    const client = getServerClient();
+    const value = client[prop];
+    if (typeof value === 'function') {
+      return value.bind(client);
+    }
+    return value;
+  },
+});
 
 // Database Types
 export interface DbSetlist {

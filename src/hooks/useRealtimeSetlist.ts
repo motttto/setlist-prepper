@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
-import { createSupabaseBrowserClient } from '@/lib/supabase';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import {
   PresenceUser,
   SetlistOperation,
