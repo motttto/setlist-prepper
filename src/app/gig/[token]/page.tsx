@@ -22,7 +22,7 @@ import { Song, CustomField, CustomFieldType } from '@/types';
 import SongListItem from '@/components/SongListItem';
 import SongDetailsPanel from '@/components/SongDetailsPanel';
 import { Button, Input, Card } from '@/components/ui';
-import { Plus, Lock, Music2, Coffee, Star, Clock, AlertTriangle, RefreshCw, User, Loader2, Cloud, CloudOff, Settings, FileDown, X } from 'lucide-react';
+import { Plus, Lock, Music2, Coffee, Star, Clock, AlertTriangle, RefreshCw, User, Loader2, Cloud, CloudOff, Settings, FileDown, X, MapPin, Calendar } from 'lucide-react';
 import { exportSetlistToPdf } from '@/lib/pdfExport';
 import { SongType } from '@/types';
 import { useRealtimeSetlist } from '@/hooks/useRealtimeSetlist';
@@ -663,10 +663,35 @@ export default function SharedGigPage() {
                 <h1 className="text-base sm:text-xl font-bold text-zinc-900 dark:text-zinc-100">
                   {title || 'Gig'}
                 </h1>
-                <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-300">
-                  {editorName}
-                </p>
               </div>
+            </div>
+            {/* Event Info - Desktop */}
+            <div className="hidden lg:flex items-center gap-4 text-sm text-zinc-600 dark:text-zinc-400">
+              {eventDate && (
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4" />
+                  {formatEventDate(eventDate)}
+                </span>
+              )}
+              {venue && (
+                <span className="flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4" />
+                  {venue}
+                </span>
+              )}
+              {startTime && (
+                <span className="flex items-center gap-1.5">
+                  <Clock className="w-4 h-4" />
+                  {startTime} - {calculateEndTime()}
+                </span>
+              )}
+              <span className="flex items-center gap-1.5">
+                <Music2 className="w-4 h-4" />
+                {songs.filter(s => (s.type || 'song') === 'song').length} Songs
+              </span>
+              <span className="text-zinc-500 dark:text-zinc-500">
+                {calculateTotalDuration()}
+              </span>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
               {/* PDF Export Button - icon only on mobile */}

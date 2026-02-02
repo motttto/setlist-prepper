@@ -818,31 +818,6 @@ export default function SetlistForm({
               </div>
             </div>
 
-            {/* Custom Fields Overview */}
-            <div className="border-t border-zinc-200 dark:border-zinc-700 pt-4">
-              <h4 className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-3 uppercase tracking-wider">
-                Eigene Felder
-              </h4>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
-                Felder im Song-Info-Panel erstellen/loeschen.
-              </p>
-              {customFields.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {customFields.map((field) => (
-                    <div
-                      key={field.id}
-                      className="px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full text-sm text-zinc-700 dark:text-zinc-300"
-                    >
-                      {field.fieldName}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-zinc-500">
-                  Noch keine eigenen Felder.
-                </p>
-              )}
-            </div>
           </div>
         </div>
       </main>
