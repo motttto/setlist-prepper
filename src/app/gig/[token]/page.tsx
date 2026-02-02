@@ -22,7 +22,7 @@ import { Song, CustomField } from '@/types';
 import SongListItem from '@/components/SongListItem';
 import SongDetailsPanel from '@/components/SongDetailsPanel';
 import { Button, Input, Card } from '@/components/ui';
-import { Plus, Lock, Music2, Coffee, Star, Clock, AlertTriangle, RefreshCw, User, Loader2, Cloud, CloudOff, Settings, FileDown } from 'lucide-react';
+import { Plus, Lock, Music2, Coffee, Star, Clock, AlertTriangle, RefreshCw, User, Loader2, Cloud, CloudOff, Settings, FileDown, X } from 'lucide-react';
 import { exportSetlistToPdf } from '@/lib/pdfExport';
 import { SongType } from '@/types';
 import { useRealtimeSetlist } from '@/hooks/useRealtimeSetlist';
@@ -63,6 +63,7 @@ export default function SharedGigPage() {
   const [isAddingField, setIsAddingField] = useState(false);
   const [fieldError, setFieldError] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+  const [showMobileDetails, setShowMobileDetails] = useState(false);
 
   const isRemoteUpdateRef = useRef(false);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -769,10 +770,10 @@ export default function SharedGigPage() {
             </Button>
           </div>
 
-          {/* Content Area - Two Column Grid, stacked on mobile */}
-          <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-4 min-h-0 overflow-hidden">
-            {/* Song List */}
-            <div className="overflow-y-auto min-h-0 max-h-[40vh] lg:max-h-none">
+          {/* Content Area - Song list full width on mobile, two columns on desktop */}
+          <div className="flex-1 flex gap-2 sm:gap-4 min-h-0 overflow-hidden">
+            {/* Song List - full height on mobile */}
+            <div className="flex-1 lg:flex-none lg:w-1/2 overflow-y-auto min-h-0">
               {songs.length === 0 ? (
                 <div className="text-center py-6 sm:py-8">
                   <p className="text-zinc-500 dark:text-zinc-400 mb-3 sm:mb-4 text-sm">
@@ -799,7 +800,13 @@ export default function SharedGigPage() {
                           key={song.id}
                           song={song}
                           isSelected={selectedSongId === song.id}
-                          onSelect={() => setSelectedSongId(song.id)}
+                          onSelect={() => {
+                            setSelectedSongId(song.id);
+                            // Open modal on mobile
+                            if (window.innerWidth < 1024) {
+                              setShowMobileDetails(true);
+                            }
+                          }}
                           onDelete={() => deleteSong(song.id)}
                           onDurationChange={(mins, secs) => updateSongDuration(song.id, mins, secs)}
                         />
@@ -810,8 +817,8 @@ export default function SharedGigPage() {
               )}
             </div>
 
-            {/* Song Details */}
-            <div className="overflow-y-auto min-h-0 bg-zinc-100 dark:bg-zinc-800 rounded-lg border border-zinc-300 dark:border-zinc-700">
+            {/* Song Details - Desktop only (hidden on mobile, shown in modal instead) */}
+            <div className="hidden lg:block lg:w-1/2 overflow-y-auto min-h-0 bg-zinc-100 dark:bg-zinc-800 rounded-lg border border-zinc-300 dark:border-zinc-700">
               <SongDetailsPanel
                 song={selectedSong}
                 customFields={customFields}
@@ -823,6 +830,41 @@ export default function SharedGigPage() {
               />
             </div>
           </div>
+
+          {/* Mobile Song Details Modal */}
+          {showMobileDetails && selectedSong && (
+            <div className="lg:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setShowMobileDetails(false)}>
+              <div
+                className="absolute inset-x-0 bottom-0 top-12 bg-zinc-100 dark:bg-zinc-800 rounded-t-2xl overflow-hidden flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Modal Header */}
+                <div className="flex items-center justify-between p-3 border-b border-zinc-300 dark:border-zinc-700 bg-zinc-200 dark:bg-zinc-900">
+                  <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">
+                    {selectedSong.title || 'Song bearbeiten'}
+                  </h3>
+                  <button
+                    onClick={() => setShowMobileDetails(false)}
+                    className="p-2 rounded-full hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
+                  >
+                    <X className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
+                  </button>
+                </div>
+                {/* Modal Content */}
+                <div className="flex-1 overflow-y-auto">
+                  <SongDetailsPanel
+                    song={selectedSong}
+                    customFields={customFields}
+                    onChange={(updatedSong) => {
+                      if (selectedSongId) {
+                        updateSong(selectedSongId, updatedSong);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Column - Settings / Custom Fields - Collapsible on mobile */}

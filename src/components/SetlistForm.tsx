@@ -21,7 +21,7 @@ import { Song, CustomField, Setlist, SongType } from '@/types';
 import SongListItem from './SongListItem';
 import SongDetailsPanel from './SongDetailsPanel';
 import { Button, Input, Card } from './ui';
-import { Plus, Save, ArrowLeft, Settings2, X, Clock, Coffee, Star, Check, Cloud, CloudOff, Loader2, FileDown } from 'lucide-react';
+import { Plus, Save, ArrowLeft, Settings2, X, Clock, Coffee, Star, Check, Cloud, CloudOff, Loader2, FileDown, Music2 } from 'lucide-react';
 import { exportSetlistToPdf } from '@/lib/pdfExport';
 import Header from './Header';
 import Link from 'next/link';
@@ -58,6 +58,7 @@ export default function SetlistForm({
   const [newFieldName, setNewFieldName] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [showMobileDetails, setShowMobileDetails] = useState(false);
 
   // Ref to track if update came from remote
   const isRemoteUpdateRef = useRef(false);
@@ -518,282 +519,361 @@ export default function SetlistForm({
 
   const selectedSong = songs.find((s) => s.id === selectedSongId) || null;
 
+  // Helper function to calculate end time
+  const calculateEndTime = () => {
+    if (!startTime) return '';
+    const [hours, minutes] = startTime.split(':').map(Number);
+    let totalSeconds = 0;
+    songs.forEach((song) => {
+      if (song.duration) {
+        const parts = song.duration.split(':');
+        if (parts.length === 2) {
+          totalSeconds += parseInt(parts[0] || '0') * 60 + parseInt(parts[1] || '0');
+        }
+      }
+    });
+    const totalMinutes = hours * 60 + minutes + Math.ceil(totalSeconds / 60);
+    const endHours = Math.floor(totalMinutes / 60) % 24;
+    const endMins = totalMinutes % 60;
+    return `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+  };
+
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
-      <Header />
-
-      <div className="max-w-7xl mx-auto p-4 pb-24">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-          <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
-            <Link href="/dashboard">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Zurück</span>
-              </Button>
-            </Link>
-            <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-              {setlistId ? 'Gig bearbeiten' : 'Neuer Gig'}
-            </h1>
-            {/* Live Save Status Indicator */}
-            {setlistId && (
-              <div className="flex items-center gap-2">
-                {saveStatus === 'saving' && (
-                  <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                  </span>
-                )}
-                {saveStatus === 'saved' && (
-                  <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded-full">
-                    <Cloud className="w-3 h-3" />
-                  </span>
-                )}
-                {saveStatus === 'error' && (
-                  <span className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
-                    <CloudOff className="w-3 h-3" />
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Presence Indicator */}
-          {setlistId && (
-            <PresenceIndicator
-              users={presenceUsers}
-              currentUserId={editorId}
-              currentUserName={editorName}
-              isConnected={isConnected}
-            />
-          )}
-        </div>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
-            {error}
-          </div>
-        )}
-
-        {saveSuccess && (
-          <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-600 dark:text-green-400 text-sm flex items-center gap-2">
-            <Check className="w-4 h-4" />
-            Änderungen gespeichert!
-          </div>
-        )}
-
-        {/* Metadata */}
-        <Card className="mb-6">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
-            Event-Details
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Input
-              label="Gig-Titel"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="z.B. Sommerfestival 2025"
-              required
-            />
-            <Input
-              label="Datum"
-              type="date"
-              value={eventDate}
-              onChange={(e) => setEventDate(e.target.value)}
-            />
-            <Input
-              label="Startzeit"
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-            />
-            <Input
-              label="Venue"
-              value={venue}
-              onChange={(e) => setVenue(e.target.value)}
-              placeholder="z.B. Olympiastadion Berlin"
-            />
-          </div>
-        </Card>
-
-        {/* Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column - Song List */}
-          <div>
-            {/* Song List Header */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-4">
-                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                  Songs ({songs.filter((s) => (s.type || 'song') === 'song').length})
-                </h2>
-                {songs.length > 0 && (
-                  <div className="flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400">
-                    <Clock className="w-4 h-4" />
-                    {calculateTotalDuration()}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Add Buttons */}
-            <div className="flex flex-wrap items-center gap-2 mb-4">
-              <Button onClick={addSong} size="sm">
-                <Plus className="w-4 h-4 sm:mr-1" />
-                <span className="hidden sm:inline">Song</span>
-              </Button>
-              <Button onClick={addPause} variant="secondary" size="sm">
-                <Coffee className="w-4 h-4 sm:mr-1" />
-                <span className="hidden sm:inline">Pause</span>
-              </Button>
-              <Button onClick={addEncore} variant="secondary" size="sm">
-                <Star className="w-4 h-4 sm:mr-1" />
-                <span className="hidden sm:inline">Zugabe</span>
-              </Button>
-              <div className="flex-1" />
-              {/* PDF Export Button */}
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => exportSetlistToPdf({ title, eventDate, startTime, venue, songs })}
-                disabled={songs.length === 0}
-              >
-                <FileDown className="w-4 h-4 sm:mr-1" />
-                <span className="hidden sm:inline">PDF</span>
-              </Button>
-            </div>
-
-            {/* Song List */}
-            {songs.length === 0 ? (
-              <Card className="text-center py-12">
-                <p className="text-zinc-500 dark:text-zinc-400 mb-4">
-                  Noch keine Songs hinzugefügt
+    <div className="h-screen flex flex-col bg-zinc-200 dark:bg-zinc-950">
+      {/* Header - Compact on mobile */}
+      <header className="bg-white dark:bg-zinc-900 border-b border-zinc-300 dark:border-zinc-800">
+        <div className="px-3 sm:px-4 py-2 sm:py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Link href="/dashboard">
+                <Button variant="ghost" size="sm" className="p-1.5 sm:p-2">
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+              </Link>
+              <div>
+                <h1 className="text-base sm:text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                  {title || (setlistId ? 'Gig bearbeiten' : 'Neuer Gig')}
+                </h1>
+                <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-300">
+                  {editorName}
                 </p>
-                <Button onClick={addSong}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Ersten Song hinzufügen
-                </Button>
-              </Card>
-            ) : (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={songs.map((s) => s.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-2">
-                    {songs.map((song) => (
-                      <SongListItem
-                        key={song.id}
-                        song={song}
-                        isSelected={selectedSongId === song.id}
-                        onSelect={() => setSelectedSongId(song.id)}
-                        onDelete={() => deleteSong(song.id)}
-                        onDurationChange={(min, sec) => updateSongDuration(song.id, min, sec)}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
-            )}
-
-            {/* Custom Fields Manager */}
-            <Card className="mt-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Settings2 className="w-5 h-5 text-zinc-500" />
-                  <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                    Eigene Felder
-                  </h2>
-                  <span className="text-sm text-zinc-500">({customFields.length})</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowFieldManager(!showFieldManager)}
-                >
-                  {showFieldManager ? 'Schließen' : 'Verwalten'}
-                </Button>
               </div>
+            </div>
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Save Status - icon only on mobile */}
+              {setlistId && (
+                <>
+                  {saveStatus === 'saving' && (
+                    <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    </span>
+                  )}
+                  {saveStatus === 'saved' && (
+                    <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                      <Cloud className="w-4 h-4" />
+                    </span>
+                  )}
+                  {saveStatus === 'error' && (
+                    <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                      <CloudOff className="w-4 h-4" />
+                    </span>
+                  )}
+                </>
+              )}
+              {/* PDF Export Button - icon only on mobile */}
+              {songs.length > 0 && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => exportSetlistToPdf({ title, eventDate, startTime, venue, songs })}
+                  className="px-2 sm:px-3"
+                >
+                  <FileDown className="w-4 h-4" />
+                  <span className="hidden sm:inline ml-1">PDF</span>
+                </Button>
+              )}
+              {/* Presence Indicator */}
+              {setlistId && (
+                <PresenceIndicator
+                  users={presenceUsers}
+                  currentUserId={editorId}
+                  currentUserName={editorName}
+                  isConnected={isConnected}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
 
-              {showFieldManager && (
-                <div className="space-y-3">
-                  <div className="flex gap-2">
-                    <Input
-                      value={newFieldName}
-                      onChange={(e) => setNewFieldName(e.target.value)}
-                      placeholder="Neues Feld (z.B. Pyro-Cues)"
-                      onKeyDown={(e) => e.key === 'Enter' && addCustomField()}
-                    />
-                    <Button onClick={addCustomField} size="sm">
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        {/* Left Column - Song List */}
+        <div className="flex-1 min-w-0 p-2 sm:p-4 overflow-hidden flex flex-col">
+          {/* Compact Stats Row */}
+          <div className="flex-shrink-0 mb-2 sm:mb-4">
+            <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+              <div className="flex items-center gap-2">
+                {saveStatus === 'idle' && lastSavedAt && (
+                  <span className="text-zinc-400 dark:text-zinc-500">
+                    <span className="sm:hidden">{lastSavedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className="hidden sm:inline">Zuletzt gespeichert {lastSavedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</span>
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 sm:gap-3">
+                {startTime && <span>{startTime}</span>}
+                <span className="flex items-center gap-1">
+                  <Music2 className="w-3 h-3" />
+                  {songs.filter(s => (s.type || 'song') === 'song').length}
+                </span>
+                <span>{calculateTotalDuration()}</span>
+                {startTime && <span className="hidden sm:inline">→ {calculateEndTime()}</span>}
+              </div>
+            </div>
+          </div>
 
-                  {customFields.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {customFields.map((field) => (
-                        <div
-                          key={field.id}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full text-sm"
-                        >
-                          <span className="text-zinc-700 dark:text-zinc-300">{field.fieldName}</span>
-                          <button
-                            onClick={() => deleteCustomField(field.id)}
-                            className="text-zinc-400 hover:text-red-500"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
+          {error && (
+            <div className="flex-shrink-0 mb-3 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm flex items-center justify-between">
+              <span>{error}</span>
+              <button onClick={() => setError('')} className="text-red-400 hover:text-red-600">×</button>
+            </div>
+          )}
+
+          {saveSuccess && (
+            <div className="flex-shrink-0 mb-3 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-600 dark:text-green-400 text-sm flex items-center gap-2">
+              <Check className="w-4 h-4" />
+              Gespeichert!
+            </div>
+          )}
+
+          {/* Add Buttons - compact on mobile */}
+          <div className="flex-shrink-0 flex gap-1.5 sm:gap-2 mb-2 sm:mb-4">
+            <Button onClick={addSong} size="sm" className="px-2 sm:px-3">
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline ml-1">Song</span>
+            </Button>
+            <Button onClick={addPause} variant="secondary" size="sm" className="px-2 sm:px-3">
+              <Coffee className="w-4 h-4" />
+              <span className="hidden sm:inline ml-1">Pause</span>
+            </Button>
+            <Button onClick={addEncore} variant="secondary" size="sm" className="px-2 sm:px-3">
+              <Star className="w-4 h-4" />
+              <span className="hidden sm:inline ml-1">Zugabe</span>
+            </Button>
+          </div>
+
+          {/* Content Area - Song list full width on mobile */}
+          <div className="flex-1 flex gap-2 sm:gap-4 min-h-0 overflow-hidden">
+            {/* Song List */}
+            <div className="flex-1 lg:flex-none lg:w-1/2 overflow-y-auto min-h-0">
+              {songs.length === 0 ? (
+                <div className="text-center py-6 sm:py-8">
+                  <p className="text-zinc-500 dark:text-zinc-400 mb-3 sm:mb-4 text-sm">
+                    Noch keine Songs
+                  </p>
+                  <Button onClick={addSong} size="sm">
+                    <Plus className="w-4 h-4 mr-1" />
+                    Ersten Song hinzufuegen
+                  </Button>
+                </div>
+              ) : (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={songs.map((s) => s.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-1.5 sm:space-y-2">
+                      {songs.map((song) => (
+                        <SongListItem
+                          key={song.id}
+                          song={song}
+                          isSelected={selectedSongId === song.id}
+                          onSelect={() => {
+                            setSelectedSongId(song.id);
+                            // Open modal on mobile
+                            if (window.innerWidth < 1024) {
+                              setShowMobileDetails(true);
+                            }
+                          }}
+                          onDelete={() => deleteSong(song.id)}
+                          onDurationChange={(min, sec) => updateSongDuration(song.id, min, sec)}
+                        />
                       ))}
                     </div>
-                  ) : (
-                    <p className="text-sm text-zinc-500">
-                      Noch keine eigenen Felder. Füge Felder hinzu, die bei jedem Song erscheinen.
-                    </p>
-                  )}
-                </div>
+                  </SortableContext>
+                </DndContext>
               )}
+            </div>
 
-              {!showFieldManager && customFields.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {customFields.map((field) => (
-                    <span
-                      key={field.id}
-                      className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded text-xs text-zinc-600 dark:text-zinc-400"
-                    >
-                      {field.fieldName}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </Card>
-          </div>
-
-          {/* Right Column - Song Details */}
-          <div className="lg:sticky lg:top-4 lg:self-start">
-            <Card className="h-[calc(100vh-200px)] min-h-[500px] overflow-hidden">
+            {/* Song Details - Desktop only */}
+            <div className="hidden lg:block lg:w-1/2 overflow-y-auto min-h-0 bg-zinc-100 dark:bg-zinc-800 rounded-lg border border-zinc-300 dark:border-zinc-700">
               <SongDetailsPanel
                 song={selectedSong}
                 customFields={customFields}
                 onChange={(updated) => updateSong(updated.id, updated)}
               />
-            </Card>
+            </div>
           </div>
+
+          {/* Mobile Song Details Modal */}
+          {showMobileDetails && selectedSong && (
+            <div className="lg:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setShowMobileDetails(false)}>
+              <div
+                className="absolute inset-x-0 bottom-0 top-12 bg-zinc-100 dark:bg-zinc-800 rounded-t-2xl overflow-hidden flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Modal Header */}
+                <div className="flex items-center justify-between p-3 border-b border-zinc-300 dark:border-zinc-700 bg-zinc-200 dark:bg-zinc-900">
+                  <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">
+                    {selectedSong.title || 'Song bearbeiten'}
+                  </h3>
+                  <button
+                    onClick={() => setShowMobileDetails(false)}
+                    className="p-2 rounded-full hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
+                  >
+                    <X className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
+                  </button>
+                </div>
+                {/* Modal Content */}
+                <div className="flex-1 overflow-y-auto">
+                  <SongDetailsPanel
+                    song={selectedSong}
+                    customFields={customFields}
+                    onChange={(updated) => updateSong(updated.id, updated)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Fixed Save Button */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-700 p-4">
-          <div className="max-w-7xl mx-auto flex justify-end gap-3">
-            <Link href="/dashboard">
-              <Button variant="secondary">Abbrechen</Button>
-            </Link>
-            <Button onClick={handleSave} isLoading={isSaving}>
-              <Save className="w-4 h-4 mr-2" />
-              Speichern
-            </Button>
+        {/* Right Column - Settings / Custom Fields */}
+        <div className={`w-full lg:w-72 flex-shrink-0 border-t lg:border-t-0 lg:border-l border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-y-auto ${showFieldManager ? '' : 'lg:block'}`}>
+          {/* Mobile toggle */}
+          <button
+            onClick={() => setShowFieldManager(!showFieldManager)}
+            className="lg:hidden w-full flex items-center justify-between p-3 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <Settings2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+                Einstellungen
+              </span>
+            </div>
+            <svg
+              className={`w-4 h-4 text-zinc-500 transition-transform ${showFieldManager ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {/* Settings content */}
+          <div className={`p-4 pt-0 lg:pt-4 ${showFieldManager ? 'block' : 'hidden lg:block'}`}>
+            {/* Event Details */}
+            <div className="mb-6">
+              <h4 className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-3 uppercase tracking-wider">
+                Event-Details
+              </h4>
+              <div className="space-y-3">
+                <Input
+                  label="Gig-Titel"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="z.B. Sommerfestival 2025"
+                  className="text-sm"
+                />
+                <Input
+                  label="Datum"
+                  type="date"
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                  className="text-sm"
+                />
+                <Input
+                  label="Startzeit"
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="text-sm"
+                />
+                <Input
+                  label="Venue"
+                  value={venue}
+                  onChange={(e) => setVenue(e.target.value)}
+                  placeholder="z.B. Olympiastadion"
+                  className="text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Custom Fields */}
+            <div className="border-t border-zinc-200 dark:border-zinc-700 pt-4">
+              <h4 className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-3 uppercase tracking-wider">
+                Eigene Felder
+              </h4>
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    value={newFieldName}
+                    onChange={(e) => setNewFieldName(e.target.value)}
+                    placeholder="Neues Feld..."
+                    onKeyDown={(e) => e.key === 'Enter' && addCustomField()}
+                    className="text-sm"
+                  />
+                  <Button onClick={addCustomField} size="sm">
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                {customFields.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {customFields.map((field) => (
+                      <div
+                        key={field.id}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full text-sm"
+                      >
+                        <span className="text-zinc-700 dark:text-zinc-300">{field.fieldName}</span>
+                        <button
+                          onClick={() => deleteCustomField(field.id)}
+                          className="text-zinc-400 hover:text-red-500"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-zinc-500">
+                    Noch keine eigenen Felder.
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
+        </div>
+      </main>
+
+      {/* Fixed Save Button - bottom bar */}
+      <div className="flex-shrink-0 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-700 p-3 sm:p-4">
+        <div className="flex justify-end gap-2 sm:gap-3">
+          <Link href="/dashboard">
+            <Button variant="secondary" size="sm">
+              <span className="hidden sm:inline">Abbrechen</span>
+              <span className="sm:hidden">×</span>
+            </Button>
+          </Link>
+          <Button onClick={handleSave} isLoading={isSaving} size="sm">
+            <Save className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Speichern</span>
+          </Button>
         </div>
       </div>
     </div>
