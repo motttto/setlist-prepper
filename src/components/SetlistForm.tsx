@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -25,13 +25,23 @@ import { Plus, Save, ArrowLeft, Settings2, X, Clock, Coffee, Star, Check } from 
 import Header from './Header';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useRealtimeSetlist } from '@/hooks/useRealtimeSetlist';
+import { PresenceIndicator } from './PresenceIndicator';
+import { SetlistOperation } from '@/lib/realtimeTypes';
 
 interface SetlistFormProps {
   initialSetlist?: Setlist;
   setlistId?: string;
+  editorId?: string;
+  editorName?: string;
 }
 
-export default function SetlistForm({ initialSetlist, setlistId }: SetlistFormProps) {
+export default function SetlistForm({
+  initialSetlist,
+  setlistId,
+  editorId = 'anonymous',
+  editorName = 'Anonymous',
+}: SetlistFormProps) {
   const router = useRouter();
   const [title, setTitle] = useState(initialSetlist?.title || '');
   const [eventDate, setEventDate] = useState(initialSetlist?.eventDate || '');
@@ -44,6 +54,91 @@ export default function SetlistForm({ initialSetlist, setlistId }: SetlistFormPr
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [showFieldManager, setShowFieldManager] = useState(false);
   const [newFieldName, setNewFieldName] = useState('');
+
+  // Ref to track if update came from remote
+  const isRemoteUpdateRef = useRef(false);
+
+  // Handle remote operations from other users
+  const handleRemoteOperation = useCallback((operation: SetlistOperation) => {
+    isRemoteUpdateRef.current = true;
+
+    switch (operation.type) {
+      case 'ADD_SONG':
+        setSongs(prev => {
+          const newSongs = [...prev];
+          newSongs.splice(operation.position, 0, operation.song);
+          return newSongs.map((s, i) => ({ ...s, position: i + 1 }));
+        });
+        break;
+
+      case 'DELETE_SONG':
+        setSongs(prev => {
+          const filtered = prev.filter(s => s.id !== operation.songId);
+          return filtered.map((s, i) => ({ ...s, position: i + 1 }));
+        });
+        if (selectedSongId === operation.songId) {
+          setSelectedSongId(null);
+        }
+        break;
+
+      case 'UPDATE_SONG':
+        setSongs(prev => prev.map(s => {
+          if (s.id !== operation.songId) return s;
+
+          // Handle nested customFields updates
+          if (typeof operation.field === 'string' && operation.field.startsWith('customFields.')) {
+            const fieldKey = operation.field.replace('customFields.', '');
+            return {
+              ...s,
+              customFields: { ...s.customFields, [fieldKey]: operation.value as string }
+            };
+          }
+
+          return { ...s, [operation.field]: operation.value };
+        }));
+        break;
+
+      case 'REORDER_SONGS':
+        setSongs(prev => {
+          const songMap = new Map(prev.map(s => [s.id, s]));
+          return operation.songIds
+            .map((id, i) => {
+              const song = songMap.get(id);
+              return song ? { ...song, position: i + 1 } : null;
+            })
+            .filter((s): s is Song => s !== null);
+        });
+        break;
+
+      case 'UPDATE_METADATA':
+        switch (operation.field) {
+          case 'title':
+            setTitle(operation.value || '');
+            break;
+          case 'eventDate':
+            setEventDate(operation.value || '');
+            break;
+          case 'venue':
+            setVenue(operation.value || '');
+            break;
+        }
+        break;
+    }
+
+    // Reset flag after state update
+    setTimeout(() => {
+      isRemoteUpdateRef.current = false;
+    }, 0);
+  }, [selectedSongId]);
+
+  // Realtime Hook
+  const { presenceUsers, isConnected, broadcastOperation, updatePresence } = useRealtimeSetlist({
+    setlistId: setlistId || '',
+    editorId,
+    editorName,
+    onRemoteOperation: handleRemoteOperation,
+    enabled: !!setlistId,
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -100,19 +195,51 @@ export default function SetlistForm({ initialSetlist, setlistId }: SetlistFormPr
     const newSong = createEmptySong(songs.length + 1, 'song');
     setSongs([...songs, newSong]);
     setSelectedSongId(newSong.id);
+
+    // Broadcast to others
+    if (setlistId) {
+      broadcastOperation({
+        type: 'ADD_SONG',
+        song: newSong,
+        position: songs.length,
+      });
+    }
   };
 
   const addPause = () => {
     const newPause = createEmptySong(songs.length + 1, 'pause');
     setSongs([...songs, newPause]);
     setSelectedSongId(newPause.id);
+
+    if (setlistId) {
+      broadcastOperation({
+        type: 'ADD_SONG',
+        song: newPause,
+        position: songs.length,
+      });
+    }
   };
 
   const addEncore = () => {
     const newEncore = createEmptySong(songs.length + 1, 'encore');
     setSongs([...songs, newEncore]);
     setSelectedSongId(newEncore.id);
+
+    if (setlistId) {
+      broadcastOperation({
+        type: 'ADD_SONG',
+        song: newEncore,
+        position: songs.length,
+      });
+    }
   };
+
+  // Update presence when selected song changes
+  useEffect(() => {
+    if (setlistId) {
+      updatePresence(selectedSongId, null);
+    }
+  }, [selectedSongId, setlistId, updatePresence]);
 
   // Berechne Gesamtlänge
   const calculateTotalDuration = () => {
@@ -137,7 +264,41 @@ export default function SetlistForm({ initialSetlist, setlistId }: SetlistFormPr
   };
 
   const updateSong = (songId: string, updatedSong: Song) => {
+    // Find what changed
+    const oldSong = songs.find(s => s.id === songId);
     setSongs(songs.map((s) => (s.id === songId ? updatedSong : s)));
+
+    // Broadcast changes (skip if this was a remote update)
+    if (setlistId && !isRemoteUpdateRef.current && oldSong) {
+      // Find changed fields and broadcast them
+      const fields = Object.keys(updatedSong) as (keyof Song)[];
+      for (const field of fields) {
+        if (field === 'id' || field === 'position') continue;
+
+        if (field === 'customFields') {
+          // Handle custom fields separately
+          const oldCustom = oldSong.customFields || {};
+          const newCustom = updatedSong.customFields || {};
+          for (const key of Object.keys(newCustom)) {
+            if (oldCustom[key] !== newCustom[key]) {
+              broadcastOperation({
+                type: 'UPDATE_SONG',
+                songId,
+                field: `customFields.${key}`,
+                value: newCustom[key],
+              });
+            }
+          }
+        } else if (JSON.stringify(oldSong[field]) !== JSON.stringify(updatedSong[field])) {
+          broadcastOperation({
+            type: 'UPDATE_SONG',
+            songId,
+            field,
+            value: updatedSong[field],
+          });
+        }
+      }
+    }
   };
 
   const updateSongDuration = (songId: string, minutes: string, seconds: string) => {
@@ -159,6 +320,14 @@ export default function SetlistForm({ initialSetlist, setlistId }: SetlistFormPr
     if (selectedSongId === songId) {
       setSelectedSongId(updatedSongs.length > 0 ? updatedSongs[0].id : null);
     }
+
+    // Broadcast to others
+    if (setlistId) {
+      broadcastOperation({
+        type: 'DELETE_SONG',
+        songId,
+      });
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -171,7 +340,17 @@ export default function SetlistForm({ initialSetlist, setlistId }: SetlistFormPr
 
         const newItems = arrayMove(items, oldIndex, newIndex);
         // Update positions
-        return newItems.map((song, i) => ({ ...song, position: i + 1 }));
+        const reorderedItems = newItems.map((song, i) => ({ ...song, position: i + 1 }));
+
+        // Broadcast reorder to others
+        if (setlistId) {
+          broadcastOperation({
+            type: 'REORDER_SONGS',
+            songIds: reorderedItems.map(s => s.id),
+          });
+        }
+
+        return reorderedItems;
       });
     }
   };
@@ -260,16 +439,27 @@ export default function SetlistForm({ initialSetlist, setlistId }: SetlistFormPr
 
       <div className="max-w-7xl mx-auto p-4 pb-24">
         {/* Page Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <Link href="/dashboard">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Zurück
-            </Button>
-          </Link>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-            {setlistId ? 'Gig bearbeiten' : 'Neuer Gig'}
-          </h1>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Link href="/dashboard">
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Zurück
+              </Button>
+            </Link>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+              {setlistId ? 'Gig bearbeiten' : 'Neuer Gig'}
+            </h1>
+          </div>
+
+          {/* Presence Indicator */}
+          {setlistId && (
+            <PresenceIndicator
+              users={presenceUsers}
+              currentUserId={editorId}
+              isConnected={isConnected}
+            />
+          )}
         </div>
 
         {error && (

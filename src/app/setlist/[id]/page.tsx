@@ -8,7 +8,7 @@ import SetlistForm from '@/components/SetlistForm';
 import { Card } from '@/components/ui';
 
 export default function EditSetlistPage() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const params = useParams();
   const [setlist, setSetlist] = useState<Setlist | null>(null);
@@ -104,5 +104,12 @@ export default function EditSetlistPage() {
     return null;
   }
 
-  return <SetlistForm initialSetlist={setlist} setlistId={setlistId} />;
+  return (
+    <SetlistForm
+      initialSetlist={setlist}
+      setlistId={setlistId}
+      editorId={session?.user?.id || session?.user?.email || 'anonymous'}
+      editorName={session?.user?.name || session?.user?.email || 'Anonymous'}
+    />
+  );
 }

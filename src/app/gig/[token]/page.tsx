@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import {
   DndContext,
@@ -23,6 +23,9 @@ import SongCard from '@/components/SongCard';
 import { Button, Input, Card } from '@/components/ui';
 import { Plus, Save, Lock, Music2, Coffee, Star, Clock, AlertTriangle, RefreshCw, User } from 'lucide-react';
 import { SongType } from '@/types';
+import { useRealtimeSetlist } from '@/hooks/useRealtimeSetlist';
+import { PresenceIndicator } from '@/components/PresenceIndicator';
+import { SetlistOperation } from '@/lib/realtimeTypes';
 
 export default function SharedGigPage() {
   const params = useParams();
@@ -47,6 +50,87 @@ export default function SharedGigPage() {
   const [updatedAt, setUpdatedAt] = useState('');
   const [lastEditedBy, setLastEditedBy] = useState('');
   const [hasConflict, setHasConflict] = useState(false);
+  const [sessionId] = useState(() => uuidv4()); // Unique ID for this session
+
+  // Ref to track if update came from remote
+  const isRemoteUpdateRef = useRef(false);
+
+  // Handle remote operations from other users
+  const handleRemoteOperation = useCallback((operation: SetlistOperation) => {
+    isRemoteUpdateRef.current = true;
+
+    switch (operation.type) {
+      case 'ADD_SONG':
+        setSongs(prev => {
+          const newSongs = [...prev];
+          newSongs.splice(operation.position, 0, operation.song);
+          return newSongs.map((s, i) => ({ ...s, position: i + 1 }));
+        });
+        break;
+
+      case 'DELETE_SONG':
+        setSongs(prev => {
+          const filtered = prev.filter(s => s.id !== operation.songId);
+          return filtered.map((s, i) => ({ ...s, position: i + 1 }));
+        });
+        break;
+
+      case 'UPDATE_SONG':
+        setSongs(prev => prev.map(s => {
+          if (s.id !== operation.songId) return s;
+
+          if (typeof operation.field === 'string' && operation.field.startsWith('customFields.')) {
+            const fieldKey = operation.field.replace('customFields.', '');
+            return {
+              ...s,
+              customFields: { ...s.customFields, [fieldKey]: operation.value as string }
+            };
+          }
+
+          return { ...s, [operation.field]: operation.value };
+        }));
+        break;
+
+      case 'REORDER_SONGS':
+        setSongs(prev => {
+          const songMap = new Map(prev.map(s => [s.id, s]));
+          return operation.songIds
+            .map((id, i) => {
+              const song = songMap.get(id);
+              return song ? { ...song, position: i + 1 } : null;
+            })
+            .filter((s): s is Song => s !== null);
+        });
+        break;
+
+      case 'UPDATE_METADATA':
+        switch (operation.field) {
+          case 'title':
+            setTitle(operation.value || '');
+            break;
+          case 'eventDate':
+            setEventDate(operation.value || '');
+            break;
+          case 'venue':
+            setVenue(operation.value || '');
+            break;
+        }
+        break;
+    }
+
+    setTimeout(() => {
+      isRemoteUpdateRef.current = false;
+    }, 0);
+  }, []);
+
+  // Realtime Hook - use token as channel ID for shared gigs
+  const { presenceUsers, isConnected, broadcastOperation, updatePresence } = useRealtimeSetlist({
+    setlistId: `shared:${token}`,
+    editorId: sessionId,
+    editorName: editorName || 'Unbekannt',
+    onRemoteOperation: handleRemoteOperation,
+    enabled: isAuthenticated && !showNamePrompt,
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -113,11 +197,23 @@ export default function SharedGigPage() {
   );
 
   const addPause = () => {
-    setSongs([...songs, createEmptySong(songs.length + 1, 'pause')]);
+    const newSong = createEmptySong(songs.length + 1, 'pause');
+    setSongs([...songs, newSong]);
+    broadcastOperation({
+      type: 'ADD_SONG',
+      song: newSong,
+      position: songs.length,
+    });
   };
 
   const addEncore = () => {
-    setSongs([...songs, createEmptySong(songs.length + 1, 'encore')]);
+    const newSong = createEmptySong(songs.length + 1, 'encore');
+    setSongs([...songs, newSong]);
+    broadcastOperation({
+      type: 'ADD_SONG',
+      song: newSong,
+      position: songs.length,
+    });
   };
 
   const calculateTotalDuration = () => {
@@ -141,18 +237,63 @@ export default function SharedGigPage() {
   };
 
   const addSong = () => {
-    setSongs([...songs, createEmptySong(songs.length + 1)]);
+    const newSong = createEmptySong(songs.length + 1);
+    setSongs([...songs, newSong]);
+    broadcastOperation({
+      type: 'ADD_SONG',
+      song: newSong,
+      position: songs.length,
+    });
   };
 
   const updateSong = (index: number, updatedSong: Song) => {
+    const oldSong = songs[index];
     const newSongs = [...songs];
     newSongs[index] = updatedSong;
     setSongs(newSongs);
+
+    // Broadcast changes (skip if remote update)
+    if (!isRemoteUpdateRef.current && oldSong) {
+      const fields = Object.keys(updatedSong) as (keyof Song)[];
+      for (const field of fields) {
+        if (field === 'id' || field === 'position') continue;
+
+        if (field === 'customFields') {
+          const oldCustom = oldSong.customFields || {};
+          const newCustom = updatedSong.customFields || {};
+          for (const key of Object.keys(newCustom)) {
+            if (oldCustom[key] !== newCustom[key]) {
+              broadcastOperation({
+                type: 'UPDATE_SONG',
+                songId: updatedSong.id,
+                field: `customFields.${key}`,
+                value: newCustom[key],
+              });
+            }
+          }
+        } else if (JSON.stringify(oldSong[field]) !== JSON.stringify(updatedSong[field])) {
+          broadcastOperation({
+            type: 'UPDATE_SONG',
+            songId: updatedSong.id,
+            field,
+            value: updatedSong[field],
+          });
+        }
+      }
+    }
   };
 
   const deleteSong = (index: number) => {
+    const songToDelete = songs[index];
     const newSongs = songs.filter((_, i) => i !== index);
     setSongs(newSongs.map((song, i) => ({ ...song, position: i + 1 })));
+
+    if (songToDelete) {
+      broadcastOperation({
+        type: 'DELETE_SONG',
+        songId: songToDelete.id,
+      });
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -164,7 +305,14 @@ export default function SharedGigPage() {
         const newIndex = items.findIndex((item) => item.id === over.id);
 
         const newItems = arrayMove(items, oldIndex, newIndex);
-        return newItems.map((song, i) => ({ ...song, position: i + 1 }));
+        const reorderedItems = newItems.map((song, i) => ({ ...song, position: i + 1 }));
+
+        broadcastOperation({
+          type: 'REORDER_SONGS',
+          songIds: reorderedItems.map(s => s.id),
+        });
+
+        return reorderedItems;
       });
     }
   };
@@ -351,27 +499,36 @@ export default function SharedGigPage() {
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
       {/* Header */}
       <header className="bg-white dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-600 rounded-lg">
-              <Music2 className="w-6 h-6 text-white" />
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-indigo-600 rounded-lg">
+                <Music2 className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                  {title || 'Geteilter Gig'}
+                </h1>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  Bearbeitet als: {editorName}
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                {title || 'Geteilter Gig'}
-              </h1>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                Bearbeitet als: {editorName}
-              </p>
+            <div className="flex items-center gap-4">
+              {/* Presence Indicator */}
+              <PresenceIndicator
+                users={presenceUsers}
+                currentUserId={sessionId}
+                isConnected={isConnected}
+              />
+              {updatedAt && (
+                <div className="text-right text-sm text-zinc-500 dark:text-zinc-400 hidden sm:block">
+                  <p>Zuletzt: {formatDate(updatedAt)}</p>
+                  {lastEditedBy && <p>von {lastEditedBy}</p>}
+                </div>
+              )}
             </div>
           </div>
-          {updatedAt && (
-            <div className="text-right text-sm text-zinc-500 dark:text-zinc-400">
-              <p>Zuletzt bearbeitet:</p>
-              <p className="font-medium">{formatDate(updatedAt)}</p>
-              {lastEditedBy && <p>von {lastEditedBy}</p>}
-            </div>
-          )}
         </div>
       </header>
 

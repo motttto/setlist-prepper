@@ -46,7 +46,6 @@ export default function Home() {
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl md:text-6xl font-bold text-zinc-900 dark:text-zinc-100 mb-6">
             Plane deine Konzert-Visuals
-            <span className="text-indigo-600 dark:text-indigo-400"> professionell</span>
           </h1>
           <p className="text-xl text-zinc-600 dark:text-zinc-400 mb-8 max-w-2xl mx-auto">
             Organisiere Setlists mit detaillierten Visual-Beschreibungen, Beleuchtungsnotizen
