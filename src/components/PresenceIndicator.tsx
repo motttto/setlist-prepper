@@ -42,8 +42,8 @@ export function PresenceIndicator({
       {/* User List */}
       {allUserNames.length > 0 && (
         <>
-          <span className="text-xs text-zinc-400">·</span>
-          <span className="text-xs text-zinc-600 dark:text-zinc-400">
+          <span className="text-xs text-zinc-500 dark:text-zinc-500">·</span>
+          <span className="text-xs text-zinc-700 dark:text-zinc-300">
             Aktiv: {allUserNames.join(', ')}
           </span>
         </>

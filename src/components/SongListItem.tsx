@@ -77,8 +77,8 @@ export default function SongListItem({
         };
       default:
         return {
-          bg: isSelected ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'bg-white dark:bg-zinc-800',
-          border: isSelected ? 'border-indigo-400 dark:border-indigo-600' : 'border-zinc-200 dark:border-zinc-700',
+          bg: isSelected ? 'bg-indigo-100 dark:bg-indigo-900/40' : 'bg-white dark:bg-zinc-800',
+          border: isSelected ? 'border-indigo-500 dark:border-indigo-500' : 'border-zinc-300 dark:border-zinc-700',
           icon: <Music className="w-4 h-4 text-zinc-400" />,
         };
     }
