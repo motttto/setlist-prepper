@@ -8,6 +8,7 @@ import Header from '@/components/Header';
 import GigsList from '@/components/GigsList';
 import GigSongsPanel from '@/components/GigSongsPanel';
 import SettingsPanel from '@/components/SettingsPanel';
+import { ConfirmModal } from '@/components/ui';
 
 export default function DashboardPage() {
   const { status } = useSession();
@@ -26,6 +27,13 @@ export default function DashboardPage() {
 
   // Edit dialog trigger
   const [editDialogTrigger, setEditDialogTrigger] = useState(0);
+
+  // Delete confirmation
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null);
+
+  // Unsaved changes tracking
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [pendingGigSwitch, setPendingGigSwitch] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -96,8 +104,15 @@ export default function DashboardPage() {
     }
   };
 
-  const handleDeleteGig = async (id: string, title: string) => {
-    if (!confirm(`Möchtest du "${title}" wirklich löschen?`)) return;
+  const handleDeleteGig = (id: string, title: string) => {
+    setDeleteConfirm({ id, title });
+  };
+
+  const confirmDeleteGig = async () => {
+    if (!deleteConfirm) return;
+
+    const { id } = deleteConfirm;
+    setDeleteConfirm(null);
 
     try {
       const response = await fetch(`/api/setlists/${id}`, {
@@ -235,7 +250,13 @@ export default function DashboardPage() {
           <GigsList
             gigs={gigs}
             selectedGigId={selectedGigId}
-            onSelectGig={setSelectedGigId}
+            onSelectGig={(id) => {
+              if (hasUnsavedChanges && id !== selectedGigId) {
+                setPendingGigSwitch(id);
+              } else {
+                setSelectedGigId(id);
+              }
+            }}
             onDeleteGig={handleDeleteGig}
             onNewGig={handleNewGig}
             onEditGig={handleEditGig}
@@ -251,6 +272,7 @@ export default function DashboardPage() {
             onSave={handleSaveSetlist}
             isLoading={isLoadingSetlist}
             openEditDialogTrigger={editDialogTrigger}
+            onUnsavedChanges={setHasUnsavedChanges}
           />
         </div>
 
@@ -264,6 +286,34 @@ export default function DashboardPage() {
           />
         </div>
       </main>
+
+      {/* Delete Gig Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={confirmDeleteGig}
+        title="Gig löschen"
+        message={`Möchtest du "${deleteConfirm?.title || ''}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`}
+        confirmText="Ja, löschen"
+        cancelText="Abbrechen"
+        variant="danger"
+      />
+
+      {/* Unsaved Changes Warning Modal */}
+      <ConfirmModal
+        isOpen={!!pendingGigSwitch}
+        onClose={() => setPendingGigSwitch(null)}
+        onConfirm={() => {
+          setHasUnsavedChanges(false);
+          setSelectedGigId(pendingGigSwitch);
+          setPendingGigSwitch(null);
+        }}
+        title="Ungespeicherte Änderungen"
+        message="Du hast ungespeicherte Änderungen. Möchtest du wirklich zu einem anderen Gig wechseln? Deine Änderungen gehen verloren."
+        confirmText="Ja, wechseln"
+        cancelText="Zurück"
+        variant="warning"
+      />
     </div>
   );
 }

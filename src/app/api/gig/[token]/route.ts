@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase, getCustomFieldsByUser } from '@/lib/supabase';
 import crypto from 'crypto';
 
 interface RouteParams {
@@ -47,13 +47,31 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       songs = [];
     }
 
+    // Custom Fields des Setlist-Owners laden
+    let customFields: { id: string; userId: string; fieldName: string; fieldType: string; createdAt: string }[] = [];
+    try {
+      const dbFields = await getCustomFieldsByUser(setlist.user_id);
+      customFields = dbFields.map((f) => ({
+        id: f.id,
+        userId: f.user_id,
+        fieldName: f.field_name,
+        fieldType: f.field_type,
+        createdAt: f.created_at,
+      }));
+    } catch (cfError) {
+      console.error('Error loading custom fields:', cfError);
+      // Custom Fields sind optional, also weitermachen
+    }
+
     return NextResponse.json({
       data: {
         id: setlist.id,
         title: setlist.title,
         eventDate: setlist.event_date,
+        startTime: setlist.start_time,
         venue: setlist.venue,
         songs,
+        customFields,
         updatedAt: setlist.updated_at,
         lastEditedBy: setlist.last_edited_by,
       },
@@ -72,7 +90,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const { token } = await params;
     const body = await request.json();
-    const { password, title, eventDate, venue, songs, editorName, expectedUpdatedAt } = body;
+    const { password, title, eventDate, startTime, venue, songs, editorName, expectedUpdatedAt } = body;
 
     if (!password) {
       return NextResponse.json({ error: 'Passwort erforderlich' }, { status: 400 });
@@ -118,6 +136,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       .update({
         title,
         event_date: eventDate || null,
+        start_time: startTime || null,
         venue: venue || null,
         encrypted_data: songsData,
         updated_at: newUpdatedAt,

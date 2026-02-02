@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { CustomField } from '@/types';
-import { Button, Input } from './ui';
+import { Button, Input, ConfirmModal } from './ui';
 import { Plus, Trash2, Settings, X } from 'lucide-react';
 
 interface SettingsPanelProps {
@@ -22,6 +22,7 @@ export default function SettingsPanel({
   const [newFieldType, setNewFieldType] = useState<'text' | 'textarea'>('text');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
+  const [deleteFieldConfirm, setDeleteFieldConfirm] = useState<{ id: string; name: string } | null>(null);
 
   const handleAddField = async () => {
     if (!newFieldName.trim()) return;
@@ -39,8 +40,15 @@ export default function SettingsPanel({
     }
   };
 
-  const handleDeleteField = async (id: string) => {
-    if (!confirm('Möchtest du dieses Feld wirklich löschen?')) return;
+  const handleDeleteField = (id: string, name: string) => {
+    setDeleteFieldConfirm({ id, name });
+  };
+
+  const confirmDeleteField = async () => {
+    if (!deleteFieldConfirm) return;
+
+    const { id } = deleteFieldConfirm;
+    setDeleteFieldConfirm(null);
 
     try {
       await onDeleteField(id);
@@ -150,7 +158,7 @@ export default function SettingsPanel({
                   </span>
                 </div>
                 <button
-                  onClick={() => handleDeleteField(field.id)}
+                  onClick={() => handleDeleteField(field.id, field.fieldName)}
                   className="p-2 text-zinc-400 hover:text-red-500 transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -161,6 +169,17 @@ export default function SettingsPanel({
         )}
       </div>
 
+      {/* Delete Field Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteFieldConfirm}
+        onClose={() => setDeleteFieldConfirm(null)}
+        onConfirm={confirmDeleteField}
+        title="Feld löschen"
+        message={`Möchtest du das Feld "${deleteFieldConfirm?.name || ''}" wirklich löschen?`}
+        confirmText="Ja, löschen"
+        cancelText="Abbrechen"
+        variant="danger"
+      />
     </div>
   );
 }

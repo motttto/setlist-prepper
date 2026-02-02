@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -20,11 +20,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { Song, CustomField, Setlist, SongType } from '@/types';
 import SongListItem from './SongListItem';
 import SongDetailsPanel from './SongDetailsPanel';
-import { Button } from './ui';
+import { Button, ConfirmModal } from './ui';
 import GigEditDialog from './GigEditDialog';
 import {
   Plus,
-  Save,
   Coffee,
   Star,
   Check,
@@ -32,6 +31,9 @@ import {
   Calendar,
   MapPin,
   Play,
+  Loader2,
+  Cloud,
+  CloudOff,
 } from 'lucide-react';
 
 interface GigSongsPanelProps {
@@ -40,6 +42,7 @@ interface GigSongsPanelProps {
   onSave: (setlist: Setlist) => Promise<void>;
   isLoading: boolean;
   openEditDialogTrigger?: number;
+  onUnsavedChanges?: (hasChanges: boolean) => void;
 }
 
 export default function GigSongsPanel({
@@ -48,6 +51,7 @@ export default function GigSongsPanel({
   onSave,
   isLoading,
   openEditDialogTrigger,
+  onUnsavedChanges,
 }: GigSongsPanelProps) {
   const [title, setTitle] = useState('');
   const [eventDate, setEventDate] = useState('');
@@ -56,9 +60,14 @@ export default function GigSongsPanel({
   const [songs, setSongs] = useState<Song[]>([]);
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [error, setError] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const initialLoadRef = useRef(true);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const AUTO_SAVE_DELAY = 2000; // 2 seconds debounce
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -69,6 +78,7 @@ export default function GigSongsPanel({
 
   // Sync state when setlist changes
   useEffect(() => {
+    initialLoadRef.current = true;
     if (setlist) {
       setTitle(setlist.title || '');
       setEventDate(setlist.eventDate || '');
@@ -84,7 +94,89 @@ export default function GigSongsPanel({
       setSongs([]);
       setSelectedSongId(null);
     }
+    setHasUnsavedChanges(false);
+    // Allow next changes to be tracked
+    setTimeout(() => {
+      initialLoadRef.current = false;
+    }, 100);
   }, [setlist]);
+
+  // Auto-save function
+  const performAutoSave = useCallback(async () => {
+    if (!setlist || !title.trim()) return;
+
+    setIsSaving(true);
+    setSaveStatus('saving');
+    setError('');
+
+    try {
+      const updatedSetlist: Setlist = {
+        id: setlist.id,
+        title,
+        eventDate: eventDate || null,
+        startTime: startTime || null,
+        venue: venue || null,
+        songs,
+        createdAt: setlist.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await onSave(updatedSetlist);
+      setHasUnsavedChanges(false);
+      onUnsavedChanges?.(false);
+      setSaveStatus('saved');
+      setLastSavedAt(new Date());
+      // Reset to idle after showing "saved"
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fehler beim Speichern');
+      setSaveStatus('error');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [setlist, title, eventDate, startTime, venue, songs, onSave, onUnsavedChanges]);
+
+  // Track changes and trigger auto-save
+  useEffect(() => {
+    if (initialLoadRef.current || !setlist) return;
+
+    setHasUnsavedChanges(true);
+    onUnsavedChanges?.(true);
+
+    // Clear existing timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    // Set new auto-save timeout
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      performAutoSave();
+    }, AUTO_SAVE_DELAY);
+
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [title, eventDate, startTime, venue, songs]);
+
+  // Notify parent when unsaved changes state changes
+  useEffect(() => {
+    onUnsavedChanges?.(hasUnsavedChanges);
+  }, [hasUnsavedChanges, onUnsavedChanges]);
+
+  // Browser beforeunload warning (only if auto-save hasn't completed)
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges && saveStatus !== 'saving') {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges, saveStatus]);
 
   // Select first song if none selected
   useEffect(() => {
@@ -208,36 +300,19 @@ export default function GigSongsPanel({
     }
   };
 
+  // Manual save (clears auto-save timeout and saves immediately)
   const handleSave = async () => {
     if (!title.trim()) {
       setError('Bitte gib einen Titel ein');
       return;
     }
 
-    setIsSaving(true);
-    setError('');
-    setSaveSuccess(false);
-
-    try {
-      const updatedSetlist: Setlist = {
-        id: setlist?.id || '',
-        title,
-        eventDate: eventDate || null,
-        startTime: startTime || null,
-        venue: venue || null,
-        songs,
-        createdAt: setlist?.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      await onSave(updatedSetlist);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Fehler beim Speichern');
-    } finally {
-      setIsSaving(false);
+    // Clear any pending auto-save
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
     }
+
+    await performAutoSave();
   };
 
   const formatDate = (dateString: string | null) => {
@@ -289,9 +364,35 @@ export default function GigSongsPanel({
     <div className="h-full flex flex-col">
       {/* Compact Header */}
       <div className="flex-shrink-0 mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-          {title || 'Unbenannter Gig'}
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+            {title || 'Unbenannter Gig'}
+          </h2>
+          {/* Save Status Indicator */}
+          {saveStatus === 'saving' && (
+            <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Speichert...
+            </span>
+          )}
+          {saveStatus === 'saved' && (
+            <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded-full">
+              <Cloud className="w-3 h-3" />
+              Gespeichert
+            </span>
+          )}
+          {saveStatus === 'error' && (
+            <span className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
+              <CloudOff className="w-3 h-3" />
+              Fehler
+            </span>
+          )}
+          {saveStatus === 'idle' && lastSavedAt && (
+            <span className="text-xs text-zinc-400 dark:text-zinc-500">
+              Zuletzt gespeichert {lastSavedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-4 text-xs text-zinc-500 dark:text-zinc-400">
           {eventDate && (
             <span className="flex items-center gap-1">
@@ -339,15 +440,9 @@ export default function GigSongsPanel({
       />
 
       {error && (
-        <div className="flex-shrink-0 mb-3 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
-          {error}
-        </div>
-      )}
-
-      {saveSuccess && (
-        <div className="flex-shrink-0 mb-3 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-600 dark:text-green-400 text-sm flex items-center gap-2">
-          <Check className="w-4 h-4" />
-          Gespeichert!
+        <div className="flex-shrink-0 mb-3 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="text-red-400 hover:text-red-600">×</button>
         </div>
       )}
 
@@ -364,11 +459,6 @@ export default function GigSongsPanel({
         <Button onClick={addEncore} variant="secondary" size="sm">
           <Star className="w-4 h-4 mr-1" />
           Zugabe
-        </Button>
-        <div className="flex-1" />
-        <Button onClick={handleSave} isLoading={isSaving} size="sm">
-          <Save className="w-4 h-4 mr-1" />
-          Speichern
         </Button>
       </div>
 

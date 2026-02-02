@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button, Input, Card } from './ui';
+import { Button, Input, Card, ConfirmModal } from './ui';
 import { Share2, Copy, Check, X, Link2, Loader2 } from 'lucide-react';
 
 interface ShareDialogProps {
@@ -24,6 +24,7 @@ export default function ShareDialog({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [showDisableConfirm, setShowDisableConfirm] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -83,10 +84,7 @@ export default function ShareDialog({
   };
 
   const handleDisableShare = async () => {
-    if (!confirm('Teilen wirklich deaktivieren? Der Link funktioniert dann nicht mehr.')) {
-      return;
-    }
-
+    setShowDisableConfirm(false);
     setIsSaving(true);
     setError('');
 
@@ -192,13 +190,25 @@ export default function ShareDialog({
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={handleDisableShare}
+                onClick={() => setShowDisableConfirm(true)}
                 isLoading={isSaving}
                 className="text-red-600 hover:text-red-700"
               >
                 Teilen deaktivieren
               </Button>
             </div>
+
+            <ConfirmModal
+              isOpen={showDisableConfirm}
+              onClose={() => setShowDisableConfirm(false)}
+              onConfirm={handleDisableShare}
+              title="Teilen deaktivieren"
+              message="Möchtest du das Teilen wirklich deaktivieren? Der Share-Link funktioniert dann nicht mehr und andere können den Gig nicht mehr bearbeiten."
+              confirmText="Ja, deaktivieren"
+              cancelText="Abbrechen"
+              variant="danger"
+              isLoading={isSaving}
+            />
           </div>
         ) : (
           <div className="space-y-4">

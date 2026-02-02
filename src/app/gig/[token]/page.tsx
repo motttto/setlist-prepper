@@ -22,7 +22,7 @@ import { Song, CustomField } from '@/types';
 import SongListItem from '@/components/SongListItem';
 import SongDetailsPanel from '@/components/SongDetailsPanel';
 import { Button, Input, Card } from '@/components/ui';
-import { Plus, Save, Lock, Music2, Coffee, Star, Clock, AlertTriangle, RefreshCw, User } from 'lucide-react';
+import { Plus, Lock, Music2, Coffee, Star, Clock, AlertTriangle, RefreshCw, User, Loader2, Cloud, CloudOff } from 'lucide-react';
 import { SongType } from '@/types';
 import { useRealtimeSetlist } from '@/hooks/useRealtimeSetlist';
 import { PresenceIndicator } from '@/components/PresenceIndicator';
@@ -40,21 +40,26 @@ export default function SharedGigPage() {
 
   const [title, setTitle] = useState('');
   const [eventDate, setEventDate] = useState('');
+  const [startTime, setStartTime] = useState('');
   const [venue, setVenue] = useState('');
   const [songs, setSongs] = useState<Song[]>([]);
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
-  const [customFields] = useState<CustomField[]>([]);
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveError, setSaveError] = useState('');
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const [editorName, setEditorName] = useState('');
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const [updatedAt, setUpdatedAt] = useState('');
   const [lastEditedBy, setLastEditedBy] = useState('');
   const [hasConflict, setHasConflict] = useState(false);
   const [sessionId] = useState(() => uuidv4());
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
   const isRemoteUpdateRef = useRef(false);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const initialLoadRef = useRef(true);
+  const AUTO_SAVE_DELAY = 2000;
 
   const handleRemoteOperation = useCallback((operation: SetlistOperation) => {
     isRemoteUpdateRef.current = true;
@@ -114,6 +119,9 @@ export default function SharedGigPage() {
           case 'eventDate':
             setEventDate(operation.value || '');
             break;
+          case 'startTime':
+            setStartTime(operation.value || '');
+            break;
           case 'venue':
             setVenue(operation.value || '');
             break;
@@ -167,15 +175,22 @@ export default function SharedGigPage() {
         return;
       }
 
+      initialLoadRef.current = true;
       setStoredPassword(password);
       setTitle(data.data.title);
       setEventDate(data.data.eventDate || '');
+      setStartTime(data.data.startTime || '');
       setVenue(data.data.venue || '');
       setSongs(data.data.songs || []);
+      setCustomFields(data.data.customFields || []);
       setUpdatedAt(data.data.updatedAt || '');
       setLastEditedBy(data.data.lastEditedBy || '');
       setIsAuthenticated(true);
       setShowNamePrompt(true);
+      // Allow changes to trigger auto-save after initial load
+      setTimeout(() => {
+        initialLoadRef.current = false;
+      }, 100);
     } catch (err) {
       console.error('Auth error:', err);
       setAuthError('Verbindungsfehler');
@@ -336,15 +351,13 @@ export default function SharedGigPage() {
     }
   };
 
-  const handleSave = async () => {
-    if (!title.trim()) {
-      setSaveError('Bitte gib einen Titel ein');
-      return;
-    }
+  // Auto-save function
+  const performAutoSave = useCallback(async () => {
+    if (!title.trim() || !storedPassword) return;
 
     setIsSaving(true);
+    setSaveStatus('saving');
     setSaveError('');
-    setSaveSuccess(false);
     setHasConflict(false);
 
     try {
@@ -355,6 +368,7 @@ export default function SharedGigPage() {
           password: storedPassword,
           title,
           eventDate: eventDate || null,
+          startTime: startTime || null,
           venue: venue || null,
           songs,
           editorName: editorName || 'Unbekannt',
@@ -368,6 +382,7 @@ export default function SharedGigPage() {
         if (data.code === 'CONFLICT') {
           setHasConflict(true);
           setSaveError(data.error);
+          setSaveStatus('error');
         } else {
           throw new Error(data.error || 'Fehler beim Speichern');
         }
@@ -376,14 +391,37 @@ export default function SharedGigPage() {
 
       setUpdatedAt(data.updatedAt);
       setLastEditedBy(data.lastEditedBy);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      setLastSavedAt(new Date());
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Fehler beim Speichern');
+      setSaveStatus('error');
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [token, storedPassword, title, eventDate, startTime, venue, songs, editorName, updatedAt]);
+
+  // Track changes and trigger auto-save (only for local changes, not remote)
+  useEffect(() => {
+    if (initialLoadRef.current || !isAuthenticated || showNamePrompt || isRemoteUpdateRef.current) return;
+
+    // Clear existing timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    // Set new auto-save timeout
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      performAutoSave();
+    }, AUTO_SAVE_DELAY);
+
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [title, eventDate, startTime, venue, songs, isAuthenticated, showNamePrompt]);
 
   const handleReload = async () => {
     setIsLoading(true);
@@ -402,6 +440,7 @@ export default function SharedGigPage() {
       if (response.ok) {
         setTitle(data.data.title);
         setEventDate(data.data.eventDate || '');
+        setStartTime(data.data.startTime || '');
         setVenue(data.data.venue || '');
         setSongs(data.data.songs || []);
         setUpdatedAt(data.data.updatedAt || '');
@@ -527,20 +566,49 @@ export default function SharedGigPage() {
                 <Music2 className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                  {title || 'Geteilter Gig'}
-                </h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                    {title || 'Geteilter Gig'}
+                  </h1>
+                  {/* Save Status Indicator */}
+                  {saveStatus === 'saving' && (
+                    <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Speichert...
+                    </span>
+                  )}
+                  {saveStatus === 'saved' && (
+                    <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded-full">
+                      <Cloud className="w-3 h-3" />
+                      Gespeichert
+                    </span>
+                  )}
+                  {saveStatus === 'error' && !hasConflict && (
+                    <span className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
+                      <CloudOff className="w-3 h-3" />
+                      Fehler
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  Bearbeitet als: {editorName}
+                  Du: {editorName}
+                  {saveStatus === 'idle' && lastSavedAt && (
+                    <span className="ml-2 text-xs">
+                      · Gespeichert {lastSavedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <PresenceIndicator
-                users={presenceUsers}
-                currentUserId={sessionId}
-                isConnected={isConnected}
-              />
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-zinc-500 dark:text-zinc-400 hidden sm:inline">Active Users:</span>
+                <PresenceIndicator
+                  users={presenceUsers}
+                  currentUserId={sessionId}
+                  isConnected={isConnected}
+                />
+              </div>
               {updatedAt && (
                 <div className="text-right text-sm text-zinc-500 dark:text-zinc-400 hidden sm:block">
                   <p>Zuletzt: {formatDate(updatedAt)}</p>
@@ -552,7 +620,7 @@ export default function SharedGigPage() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto p-4 pb-24">
+      <div className="max-w-7xl mx-auto p-4">
         {/* Conflict Warning */}
         {hasConflict && (
           <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
@@ -582,14 +650,9 @@ export default function SharedGigPage() {
         )}
 
         {saveError && !hasConflict && (
-          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
-            {saveError}
-          </div>
-        )}
-
-        {saveSuccess && (
-          <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-600 dark:text-green-400 text-sm">
-            Änderungen gespeichert!
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm flex items-center justify-between">
+            <span>{saveError}</span>
+            <button onClick={() => setSaveError('')} className="text-red-400 hover:text-red-600">×</button>
           </div>
         )}
 
@@ -598,7 +661,7 @@ export default function SharedGigPage() {
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
             Event-Details
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Input
               label="Gig-Titel"
               value={title}
@@ -611,6 +674,12 @@ export default function SharedGigPage() {
               type="date"
               value={eventDate}
               onChange={(e) => setEventDate(e.target.value)}
+            />
+            <Input
+              label="Startzeit"
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
             />
             <Input
               label="Venue"
@@ -705,15 +774,6 @@ export default function SharedGigPage() {
           </div>
         </div>
 
-        {/* Fixed Save Button */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-700 p-4">
-          <div className="max-w-7xl mx-auto flex justify-end">
-            <Button onClick={handleSave} isLoading={isSaving}>
-              <Save className="w-4 h-4 mr-2" />
-              Speichern
-            </Button>
-          </div>
-        </div>
       </div>
     </div>
   );

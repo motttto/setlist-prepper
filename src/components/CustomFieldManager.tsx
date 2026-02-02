@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { CustomField } from '@/types';
-import { Button, Input, Card } from './ui';
+import { Button, Input, Card, ConfirmModal } from './ui';
 import { Plus, Trash2, Settings } from 'lucide-react';
 
 export default function CustomFieldManager() {
@@ -12,6 +12,7 @@ export default function CustomFieldManager() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
+  const [deleteFieldConfirm, setDeleteFieldConfirm] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     loadFields();
@@ -63,8 +64,15 @@ export default function CustomFieldManager() {
     }
   };
 
-  const deleteField = async (id: string) => {
-    if (!confirm('Möchtest du dieses Feld wirklich löschen?')) return;
+  const handleDeleteField = (id: string, name: string) => {
+    setDeleteFieldConfirm({ id, name });
+  };
+
+  const confirmDeleteField = async () => {
+    if (!deleteFieldConfirm) return;
+
+    const { id } = deleteFieldConfirm;
+    setDeleteFieldConfirm(null);
 
     try {
       const response = await fetch(`/api/custom-fields?id=${id}`, {
@@ -133,7 +141,7 @@ export default function CustomFieldManager() {
                 </span>
               </div>
               <button
-                onClick={() => deleteField(field.id)}
+                onClick={() => handleDeleteField(field.id, field.fieldName)}
                 className="p-2 text-zinc-400 hover:text-red-500"
               >
                 <Trash2 className="w-4 h-4" />
@@ -171,6 +179,18 @@ export default function CustomFieldManager() {
           Noch keine benutzerdefinierten Felder erstellt
         </p>
       )}
+
+      {/* Delete Field Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteFieldConfirm}
+        onClose={() => setDeleteFieldConfirm(null)}
+        onConfirm={confirmDeleteField}
+        title="Feld löschen"
+        message={`Möchtest du das Feld "${deleteFieldConfirm?.name || ''}" wirklich löschen?`}
+        confirmText="Ja, löschen"
+        cancelText="Abbrechen"
+        variant="danger"
+      />
     </Card>
   );
 }
