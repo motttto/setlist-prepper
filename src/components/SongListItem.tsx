@@ -148,7 +148,7 @@ export default function SongListItem({
         </div>
 
         {/* Title (click to select) */}
-        <span className={`flex-1 min-w-0 text-sm font-medium truncate ${song.muted ? 'text-zinc-400 dark:text-zinc-500 line-through' : 'text-zinc-900 dark:text-zinc-100'}`}>
+        <span className={`flex-1 min-w-0 text-sm font-medium truncate ${song.muted ? 'text-zinc-400 dark:text-zinc-500' : 'text-zinc-900 dark:text-zinc-100'}`}>
           {song.title || (songType === 'pause' ? 'Pause' : songType === 'encore' ? 'Zugabe' : 'Song-Titel')}
         </span>
 
