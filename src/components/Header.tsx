@@ -19,6 +19,10 @@ export default function Header() {
       </Link>
 
       <div className="flex items-center gap-3">
+        <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hidden sm:block">
+          ADMIN PANEL
+        </span>
+        <span className="text-xs text-zinc-400 dark:text-zinc-500 hidden sm:block">|</span>
         <span className="text-xs text-zinc-600 dark:text-zinc-400 hidden sm:block">
           {session?.user?.email}
         </span>

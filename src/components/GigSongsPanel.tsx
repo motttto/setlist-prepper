@@ -34,7 +34,9 @@ import {
   Loader2,
   Cloud,
   CloudOff,
+  FileDown,
 } from 'lucide-react';
+import { exportSetlistToPdf } from '@/lib/pdfExport';
 
 interface GigSongsPanelProps {
   setlist: Setlist | null;
@@ -368,6 +370,15 @@ export default function GigSongsPanel({
           <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
             {title || 'Unbenannter Gig'}
           </h2>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => exportSetlistToPdf({ title, eventDate, startTime, venue, songs })}
+            className="ml-2"
+          >
+            <FileDown className="w-4 h-4 mr-1" />
+            PDF
+          </Button>
           {/* Save Status Indicator */}
           {saveStatus === 'saving' && (
             <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
