@@ -565,28 +565,15 @@ export default function SetlistForm({
             )}
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* PDF Export Button */}
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => exportSetlistToPdf({ title, eventDate, startTime, venue, songs })}
-              disabled={songs.length === 0}
-            >
-              <FileDown className="w-4 h-4 mr-1" />
-              PDF
-            </Button>
-
-            {/* Presence Indicator */}
-            {setlistId && (
-              <PresenceIndicator
-                users={presenceUsers}
-                currentUserId={editorId}
-                currentUserName={editorName}
-                isConnected={isConnected}
-              />
-            )}
-          </div>
+          {/* Presence Indicator */}
+          {setlistId && (
+            <PresenceIndicator
+              users={presenceUsers}
+              currentUserId={editorId}
+              currentUserName={editorName}
+              isConnected={isConnected}
+            />
+          )}
         </div>
 
         {error && (
@@ -656,18 +643,30 @@ export default function SetlistForm({
             </div>
 
             {/* Add Buttons */}
-            <div className="flex gap-2 mb-4">
-              <Button onClick={addSong} size="sm">
-                <Plus className="w-4 h-4 mr-1" />
-                Song
-              </Button>
-              <Button onClick={addPause} variant="secondary" size="sm">
-                <Coffee className="w-4 h-4 mr-1" />
-                Pause
-              </Button>
-              <Button onClick={addEncore} variant="secondary" size="sm">
-                <Star className="w-4 h-4 mr-1" />
-                Zugabe
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex gap-2">
+                <Button onClick={addSong} size="sm">
+                  <Plus className="w-4 h-4 mr-1" />
+                  Song
+                </Button>
+                <Button onClick={addPause} variant="secondary" size="sm">
+                  <Coffee className="w-4 h-4 mr-1" />
+                  Pause
+                </Button>
+                <Button onClick={addEncore} variant="secondary" size="sm">
+                  <Star className="w-4 h-4 mr-1" />
+                  Zugabe
+                </Button>
+              </div>
+              {/* PDF Export Button */}
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => exportSetlistToPdf({ title, eventDate, startTime, venue, songs })}
+                disabled={songs.length === 0}
+              >
+                <FileDown className="w-4 h-4 mr-1" />
+                PDF
               </Button>
             </div>
 
