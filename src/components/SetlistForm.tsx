@@ -567,16 +567,15 @@ export default function SetlistForm({
 
           <div className="flex items-center gap-3">
             {/* PDF Export Button */}
-            {songs.length > 0 && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => exportSetlistToPdf({ title, eventDate, startTime, venue, songs })}
-              >
-                <FileDown className="w-4 h-4 mr-1" />
-                PDF
-              </Button>
-            )}
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => exportSetlistToPdf({ title, eventDate, startTime, venue, songs })}
+              disabled={songs.length === 0}
+            >
+              <FileDown className="w-4 h-4 mr-1" />
+              PDF
+            </Button>
 
             {/* Presence Indicator */}
             {setlistId && (
