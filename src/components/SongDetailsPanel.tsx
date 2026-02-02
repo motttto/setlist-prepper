@@ -315,6 +315,38 @@ export default function SongDetailsPanel({
               placeholder={songType === 'pause' ? 'Notizen zur Pause...' : 'Notizen zur Zugabe...'}
               rows={4}
             />
+
+            {/* Custom Fields for Pause/Encore too */}
+            {customFields.length > 0 && (
+              <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700">
+                <h4 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+                  Eigene Felder
+                </h4>
+                <div className="space-y-3">
+                  {customFields.map((field) => (
+                    <div key={field.id}>
+                      {field.fieldType === 'textarea' ? (
+                        <Textarea
+                          label={field.fieldName}
+                          value={song.customFields[field.fieldName] || ''}
+                          onChange={(e) =>
+                            handleCustomFieldChange(field.fieldName, e.target.value)
+                          }
+                        />
+                      ) : (
+                        <Input
+                          label={field.fieldName}
+                          value={song.customFields[field.fieldName] || ''}
+                          onChange={(e) =>
+                            handleCustomFieldChange(field.fieldName, e.target.value)
+                          }
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
