@@ -654,6 +654,7 @@ export default function SharedGigPage() {
       {/* Header - Compact on mobile */}
       <header className="bg-white dark:bg-zinc-900 border-b border-zinc-300 dark:border-zinc-800">
         <div className="px-3 sm:px-4 py-2 sm:py-3">
+          {/* First Row: Title, PDF, Presence */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="p-1.5 sm:p-2 bg-indigo-600 rounded-lg">
@@ -665,7 +666,7 @@ export default function SharedGigPage() {
                 </h1>
               </div>
             </div>
-            {/* Event Info - Desktop */}
+            {/* Event Info - Desktop only */}
             <div className="hidden lg:flex items-center gap-4 text-sm text-zinc-600 dark:text-zinc-400">
               {eventDate && (
                 <span className="flex items-center gap-1.5">
@@ -713,6 +714,14 @@ export default function SharedGigPage() {
                 isConnected={isConnected}
               />
             </div>
+          </div>
+          {/* Second Row: Gig Info - Mobile only */}
+          <div className="lg:hidden mt-2 pt-2 border-t border-zinc-200 dark:border-zinc-700 text-xs text-zinc-500 dark:text-zinc-400 flex flex-wrap items-center gap-x-3 gap-y-1">
+            {eventDate && <span>{formatEventDate(eventDate)}</span>}
+            {venue && <span>{venue}</span>}
+            {startTime && <span>{startTime} - {calculateEndTime()}</span>}
+            <span>{songs.filter(s => (s.type || 'song') === 'song').length} Songs</span>
+            <span>Dauer: {calculateTotalDuration()}</span>
           </div>
         </div>
       </header>
