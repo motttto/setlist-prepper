@@ -64,19 +64,19 @@ export default function SongDetailsPanel({
     switch (songType) {
       case 'pause':
         return {
-          bg: 'bg-amber-50 dark:bg-amber-900/20',
+          bg: 'bg-amber-50 dark:bg-amber-900',
           icon: <Coffee className="w-5 h-5 text-amber-500" />,
           label: 'Pause',
         };
       case 'encore':
         return {
-          bg: 'bg-purple-50 dark:bg-purple-900/20',
+          bg: 'bg-purple-50 dark:bg-purple-900',
           icon: <Star className="w-5 h-5 text-purple-500" />,
           label: 'Zugabe',
         };
       default:
         return {
-          bg: 'bg-indigo-50 dark:bg-indigo-900/20',
+          bg: 'bg-indigo-50 dark:bg-indigo-900',
           icon: <Music className="w-5 h-5 text-indigo-500" />,
           label: `Song #${song.position}`,
         };
