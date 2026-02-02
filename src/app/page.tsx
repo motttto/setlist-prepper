@@ -103,9 +103,14 @@ export default function Home() {
               Setlist Prepper
             </span>
           </div>
-          <p className="text-sm text-zinc-500 dark:text-zinc-500">
-            Sichere Konzertplanung für Visual Artists
-          </p>
+          <div className="flex items-center gap-4 text-sm text-zinc-500 dark:text-zinc-500">
+            <Link href="/impressum" className="hover:text-zinc-700 dark:hover:text-zinc-300">
+              Impressum
+            </Link>
+            <Link href="/datenschutz" className="hover:text-zinc-700 dark:hover:text-zinc-300">
+              Datenschutz
+            </Link>
+          </div>
         </div>
       </footer>
     </div>
