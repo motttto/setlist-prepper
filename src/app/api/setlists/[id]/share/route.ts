@@ -73,8 +73,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Share-URL generieren
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    // Share-URL generieren - nutze die Request-URL für die Base-URL
+    const requestUrl = new URL(request.url);
+    const baseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
     const shareUrl = `${baseUrl}/gig/${shareToken}`;
 
     return NextResponse.json({
@@ -154,7 +155,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Gig nicht gefunden' }, { status: 404 });
     }
 
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    // Share-URL generieren - nutze die Request-URL für die Base-URL
+    const requestUrl = new URL(request.url);
+    const baseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
     const shareUrl = data.share_token ? `${baseUrl}/gig/${data.share_token}` : null;
 
     return NextResponse.json({
