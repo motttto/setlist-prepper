@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { v4 as uuidv4 } from 'uuid';
-import { Song, CustomField, Setlist, SongType } from '@/types';
+import { Song, CustomField, Setlist, SongType, ActType } from '@/types';
 import SongListItem from './SongListItem';
 import SongDetailsPanel from './SongDetailsPanel';
 import { Button, ConfirmModal } from './ui';
@@ -39,6 +39,8 @@ import {
   Copy,
   VolumeX,
   Volume2,
+  Users,
+  Disc3,
 } from 'lucide-react';
 import { exportSetlistToPdf } from '@/lib/pdfExport';
 
@@ -236,6 +238,35 @@ export default function GigSongsPanel({
     const newEncore = createEmptySong(songs.length + 1, 'encore');
     setSongs([...songs, newEncore]);
     setSelectedSongId(newEncore.id);
+  };
+
+  const addAct = (actType: ActType = 'band') => {
+    const actLabels: Record<ActType, string> = {
+      band: 'Neue Band',
+      dj: 'Neuer DJ',
+      solo: 'Neuer Solo-Act',
+      other: 'Neuer Act',
+    };
+    const newAct: Song = {
+      id: uuidv4(),
+      position: songs.length + 1,
+      type: 'act',
+      title: actLabels[actType],
+      actType,
+      duration: '',
+      lyrics: '',
+      visualDescription: '',
+      timingBpm: '',
+      transitionTypes: [],
+      transitions: '',
+      lighting: '',
+      mediaLinks: [],
+      stageDirections: '',
+      audioCues: '',
+      customFields: {},
+    };
+    setSongs([...songs, newAct]);
+    setSelectedSongId(newAct.id);
   };
 
   const getTotalSeconds = () => {
@@ -521,7 +552,16 @@ export default function GigSongsPanel({
       )}
 
       {/* Add Buttons - compact on mobile */}
-      <div className="flex-shrink-0 flex gap-1.5 sm:gap-2 mb-2 sm:mb-4">
+      <div className="flex-shrink-0 flex flex-wrap gap-1.5 sm:gap-2 mb-2 sm:mb-4">
+        <Button onClick={() => addAct('band')} variant="secondary" size="sm" className="px-2 sm:px-3 bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/30 dark:hover:bg-cyan-900/50 border-cyan-300 dark:border-cyan-700">
+          <Users className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+          <span className="hidden sm:inline ml-1 text-cyan-700 dark:text-cyan-300">Band</span>
+        </Button>
+        <Button onClick={() => addAct('dj')} variant="secondary" size="sm" className="px-2 sm:px-3 bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/30 dark:hover:bg-cyan-900/50 border-cyan-300 dark:border-cyan-700">
+          <Disc3 className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+          <span className="hidden sm:inline ml-1 text-cyan-700 dark:text-cyan-300">DJ</span>
+        </Button>
+        <div className="w-px h-6 bg-zinc-300 dark:bg-zinc-600 self-center mx-1" />
         <Button onClick={addSong} size="sm" className="px-2 sm:px-3">
           <Plus className="w-4 h-4" />
           <span className="hidden sm:inline ml-1">Song</span>

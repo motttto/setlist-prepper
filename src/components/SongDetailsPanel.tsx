@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Song, CustomField, CustomFieldType, TransitionType } from '@/types';
+import { Song, CustomField, CustomFieldType, TransitionType, ActType } from '@/types';
 import { Input, Textarea, Button } from './ui';
-import { Plus, X, Music, Coffee, Star, ExternalLink, ChevronDown, Trash2 } from 'lucide-react';
+import { Plus, X, Music, Coffee, Star, ExternalLink, ChevronDown, Trash2, Users, Disc3 } from 'lucide-react';
 
 interface SongDetailsPanelProps {
   song: Song | null;
@@ -70,6 +70,13 @@ export default function SongDetailsPanel({
   // Header styling based on type
   const getHeaderStyles = () => {
     switch (songType) {
+      case 'act':
+        const actLabel = song.actType === 'dj' ? 'DJ' : song.actType === 'solo' ? 'Solo-Act' : 'Band';
+        return {
+          bg: 'bg-cyan-50 dark:bg-cyan-900',
+          icon: song.actType === 'dj' ? <Disc3 className="w-5 h-5 text-cyan-500" /> : <Users className="w-5 h-5 text-cyan-500" />,
+          label: actLabel,
+        };
       case 'pause':
         return {
           bg: 'bg-amber-50 dark:bg-amber-900',
@@ -112,8 +119,121 @@ export default function SongDetailsPanel({
 
       {/* Content */}
       <div className="p-4 space-y-4">
-        {/* Only show details for songs, not pause/encore */}
-        {songType === 'song' ? (
+        {/* Act editing */}
+        {songType === 'act' ? (
+          <>
+            <Input
+              label="Name"
+              value={song.title}
+              onChange={(e) => handleChange('title', e.target.value)}
+              placeholder="Band / DJ Name..."
+            />
+
+            {/* Act Type Selection */}
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                Act-Typ
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  { value: 'band', label: 'Band', icon: <Users className="w-4 h-4" /> },
+                  { value: 'dj', label: 'DJ', icon: <Disc3 className="w-4 h-4" /> },
+                  { value: 'solo', label: 'Solo', icon: <Music className="w-4 h-4" /> },
+                  { value: 'other', label: 'Andere', icon: <Star className="w-4 h-4" /> },
+                ] as { value: ActType; label: string; icon: React.ReactNode }[]).map((actTypeOption) => {
+                  const isSelected = song.actType === actTypeOption.value;
+                  return (
+                    <button
+                      key={actTypeOption.value}
+                      type="button"
+                      onClick={() => {
+                        onChange({ ...song, actType: actTypeOption.value });
+                      }}
+                      className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${
+                        isSelected
+                          ? 'bg-cyan-100 dark:bg-cyan-900/40 border-cyan-400 dark:border-cyan-600 text-cyan-700 dark:text-cyan-300'
+                          : 'bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-600 text-zinc-600 dark:text-zinc-400 hover:border-cyan-300 dark:hover:border-cyan-500'
+                      }`}
+                    >
+                      {actTypeOption.icon}
+                      {actTypeOption.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <Textarea
+              label="Beschreibung / Notizen"
+              value={song.visualDescription || ''}
+              onChange={(e) => handleChange('visualDescription', e.target.value)}
+              placeholder="Beschreibung des Acts, Genre, besondere Anforderungen..."
+              rows={4}
+            />
+
+            <Textarea
+              label="Technische Anforderungen"
+              value={song.stageDirections || ''}
+              onChange={(e) => handleChange('stageDirections', e.target.value)}
+              placeholder="Equipment, Backline, Mikrofone..."
+              rows={3}
+            />
+
+            {/* Media Links for Act */}
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                Links (Website, Social Media, etc.)
+              </label>
+              <div className="space-y-2">
+                {song.mediaLinks.map((link, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Input
+                      value={link}
+                      onChange={(e) => {
+                        const newLinks = [...song.mediaLinks];
+                        newLinks[index] = e.target.value;
+                        handleChange('mediaLinks', newLinks);
+                      }}
+                      className="flex-1"
+                    />
+                    <a
+                      href={link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors"
+                      title="Link öffnen"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                    <button
+                      onClick={() => removeMediaLink(index)}
+                      className="p-2 text-zinc-400 hover:text-red-500"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={newMediaLink}
+                    onChange={(e) => setNewMediaLink(e.target.value)}
+                    placeholder="Neuen Link hinzufügen..."
+                    className="flex-1"
+                    onKeyDown={(e) => e.key === 'Enter' && addMediaLink()}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={addMediaLink}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : songType === 'song' ? (
           <>
             {/* Title */}
             <Input

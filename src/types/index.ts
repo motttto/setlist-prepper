@@ -1,6 +1,8 @@
 // TypeScript Interfaces for Setlist-Prepper
 
-export type SongType = 'song' | 'pause' | 'encore';
+export type SongType = 'song' | 'pause' | 'encore' | 'act';
+
+export type ActType = 'band' | 'dj' | 'solo' | 'other';
 
 export type TransitionType =
   | 'smooth'      // Fließend
@@ -31,6 +33,7 @@ export interface Song {
   audioCues: string;
   customFields: Record<string, string>;
   muted?: boolean; // Wenn true, wird Song übersprungen (grau) aber nicht gelöscht
+  actType?: ActType; // Nur für type='act': Band, DJ, Solo, etc.
 }
 
 export interface Setlist {

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Song } from '@/types';
-import { GripVertical, Trash2, Coffee, Star, Music, Copy, VolumeX, Volume2 } from 'lucide-react';
+import { GripVertical, Trash2, Coffee, Star, Music, Copy, VolumeX, Volume2, Users, Disc3 } from 'lucide-react';
 
 interface SongListItemProps {
   song: Song;
@@ -98,9 +98,27 @@ export default function SongListItem({
     setEditingSeconds(null);
   };
 
+  // Get icon for act type
+  const getActIcon = () => {
+    switch (song.actType) {
+      case 'dj':
+        return <Disc3 className="w-4 h-4 text-cyan-500" />;
+      case 'band':
+      case 'solo':
+      default:
+        return <Users className="w-4 h-4 text-cyan-500" />;
+    }
+  };
+
   // Styling based on type
   const getTypeStyles = () => {
     switch (songType) {
+      case 'act':
+        return {
+          bg: isSelected ? 'bg-cyan-100 dark:bg-cyan-900/40' : 'bg-cyan-50 dark:bg-cyan-900/20',
+          border: isSelected ? 'border-cyan-400 dark:border-cyan-600' : 'border-cyan-300 dark:border-cyan-800',
+          icon: getActIcon(),
+        };
       case 'pause':
         return {
           bg: isSelected ? 'bg-amber-100 dark:bg-amber-900/40' : 'bg-amber-50 dark:bg-amber-900/20',
@@ -123,6 +141,73 @@ export default function SongListItem({
   };
 
   const typeStyles = getTypeStyles();
+
+  // Special rendering for Act headers
+  if (songType === 'act') {
+    const actLabel = song.actType === 'dj' ? 'DJ' : song.actType === 'solo' ? 'Solo' : 'Band';
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={`${typeStyles.bg} border-2 ${typeStyles.border} rounded-lg p-3 cursor-pointer transition-colors`}
+        onClick={onSelect}
+      >
+        <div className="flex items-center gap-2">
+          {/* Drag Handle */}
+          <button
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical className="w-4 h-4" />
+          </button>
+
+          {/* Act Icon */}
+          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-cyan-100 dark:bg-cyan-800">
+            {typeStyles.icon}
+          </div>
+
+          {/* Act Name & Type */}
+          <div className="flex-1 min-w-0">
+            <span className="text-base font-semibold text-cyan-800 dark:text-cyan-200 truncate block">
+              {song.title || `Neuer ${actLabel}`}
+            </span>
+            <span className="text-xs text-cyan-600 dark:text-cyan-400 uppercase tracking-wide">
+              {actLabel}
+            </span>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-0.5">
+            {/* Duplicate */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDuplicate();
+              }}
+              className="p-1 text-zinc-400 hover:text-indigo-500"
+              title="Duplizieren"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+
+            {/* Delete */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="p-1 text-zinc-400 hover:text-red-500"
+              title="Löschen"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
