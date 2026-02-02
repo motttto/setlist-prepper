@@ -21,7 +21,7 @@ import { Song, CustomField, Setlist, SongType } from '@/types';
 import SongListItem from './SongListItem';
 import SongDetailsPanel from './SongDetailsPanel';
 import { Button, Input, Card } from './ui';
-import { Plus, Save, ArrowLeft, Settings2, X, Clock, Coffee, Star, Check } from 'lucide-react';
+import { Plus, Save, ArrowLeft, Settings2, X, Clock, Coffee, Star, Check, Cloud, CloudOff, Loader2 } from 'lucide-react';
 import Header from './Header';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -54,13 +54,20 @@ export default function SetlistForm({
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [showFieldManager, setShowFieldManager] = useState(false);
   const [newFieldName, setNewFieldName] = useState('');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
   // Ref to track if update came from remote
   const isRemoteUpdateRef = useRef(false);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const initialLoadRef = useRef(true);
+  const skipNextAutoSaveRef = useRef(false);
+  const AUTO_SAVE_DELAY = 2000;
 
   // Handle remote operations from other users
   const handleRemoteOperation = useCallback((operation: SetlistOperation) => {
     isRemoteUpdateRef.current = true;
+    skipNextAutoSaveRef.current = true; // Skip auto-save for remote updates
 
     switch (operation.type) {
       case 'ADD_SONG':
@@ -169,6 +176,80 @@ export default function SetlistForm({
       setSelectedSongId(songs[0].id);
     }
   }, [songs, selectedSongId]);
+
+  // Mark initial load complete after first render
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      initialLoadRef.current = false;
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Auto-save function
+  const performAutoSave = useCallback(async () => {
+    if (!title.trim() || !setlistId) return;
+
+    setIsSaving(true);
+    setSaveStatus('saving');
+    setError('');
+
+    try {
+      const payload = {
+        title,
+        eventDate: eventDate || null,
+        venue: venue || null,
+        songs,
+      };
+
+      const response = await fetch(`/api/setlists/${setlistId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Fehler beim Speichern');
+      }
+
+      setLastSavedAt(new Date());
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fehler beim Speichern');
+      setSaveStatus('error');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [setlistId, title, eventDate, venue, songs]);
+
+  // Track changes and trigger auto-save (only for local changes, not remote, only when editing existing setlist)
+  useEffect(() => {
+    if (initialLoadRef.current || !setlistId) return;
+
+    // Skip auto-save if this was a remote update
+    if (skipNextAutoSaveRef.current) {
+      skipNextAutoSaveRef.current = false;
+      return;
+    }
+
+    // Clear existing timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    // Set new auto-save timeout
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      performAutoSave();
+    }, AUTO_SAVE_DELAY);
+
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [title, eventDate, venue, songs, setlistId]);
 
   const createEmptySong = useCallback(
     (position: number, type: SongType = 'song'): Song => ({
@@ -450,6 +531,34 @@ export default function SetlistForm({
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
               {setlistId ? 'Gig bearbeiten' : 'Neuer Gig'}
             </h1>
+            {/* Live Save Status Indicator */}
+            {setlistId && (
+              <div className="flex items-center gap-2">
+                {saveStatus === 'saving' && (
+                  <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Speichert...
+                  </span>
+                )}
+                {saveStatus === 'saved' && (
+                  <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded-full">
+                    <Cloud className="w-3 h-3" />
+                    Gespeichert
+                  </span>
+                )}
+                {saveStatus === 'error' && (
+                  <span className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
+                    <CloudOff className="w-3 h-3" />
+                    Fehler
+                  </span>
+                )}
+                {saveStatus === 'idle' && lastSavedAt && (
+                  <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                    Zuletzt gespeichert {lastSavedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Presence Indicator */}

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Song, CustomField, TransitionType } from '@/types';
 import { Input, Textarea, Button } from './ui';
-import { Plus, X, Music, Coffee, Star } from 'lucide-react';
+import { Plus, X, Music, Coffee, Star, ExternalLink } from 'lucide-react';
 
 interface SongDetailsPanelProps {
   song: Song | null;
@@ -230,6 +230,15 @@ export default function SongDetailsPanel({
                       }}
                       className="flex-1"
                     />
+                    <a
+                      href={link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors"
+                      title="Link öffnen"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
                     <button
                       onClick={() => removeMediaLink(index)}
                       className="p-2 text-zinc-400 hover:text-red-500"
