@@ -19,7 +19,8 @@ import {
 } from '@dnd-kit/sortable';
 import { v4 as uuidv4 } from 'uuid';
 import { Song, CustomField } from '@/types';
-import SongCard from '@/components/SongCard';
+import SongListItem from '@/components/SongListItem';
+import SongDetailsPanel from '@/components/SongDetailsPanel';
 import { Button, Input, Card } from '@/components/ui';
 import { Plus, Save, Lock, Music2, Coffee, Star, Clock, AlertTriangle, RefreshCw, User } from 'lucide-react';
 import { SongType } from '@/types';
@@ -41,6 +42,7 @@ export default function SharedGigPage() {
   const [eventDate, setEventDate] = useState('');
   const [venue, setVenue] = useState('');
   const [songs, setSongs] = useState<Song[]>([]);
+  const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
   const [customFields] = useState<CustomField[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -50,12 +52,10 @@ export default function SharedGigPage() {
   const [updatedAt, setUpdatedAt] = useState('');
   const [lastEditedBy, setLastEditedBy] = useState('');
   const [hasConflict, setHasConflict] = useState(false);
-  const [sessionId] = useState(() => uuidv4()); // Unique ID for this session
+  const [sessionId] = useState(() => uuidv4());
 
-  // Ref to track if update came from remote
   const isRemoteUpdateRef = useRef(false);
 
-  // Handle remote operations from other users
   const handleRemoteOperation = useCallback((operation: SetlistOperation) => {
     isRemoteUpdateRef.current = true;
 
@@ -73,6 +73,9 @@ export default function SharedGigPage() {
           const filtered = prev.filter(s => s.id !== operation.songId);
           return filtered.map((s, i) => ({ ...s, position: i + 1 }));
         });
+        if (selectedSongId === operation.songId) {
+          setSelectedSongId(null);
+        }
         break;
 
       case 'UPDATE_SONG':
@@ -121,9 +124,8 @@ export default function SharedGigPage() {
     setTimeout(() => {
       isRemoteUpdateRef.current = false;
     }, 0);
-  }, []);
+  }, [selectedSongId]);
 
-  // Realtime Hook - use token as channel ID for shared gigs
   const { presenceUsers, isConnected, broadcastOperation, updatePresence } = useRealtimeSetlist({
     setlistId: `shared:${token}`,
     editorId: sessionId,
@@ -138,6 +140,13 @@ export default function SharedGigPage() {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  // Update presence when selected song changes
+  useEffect(() => {
+    if (isAuthenticated && !showNamePrompt) {
+      updatePresence(selectedSongId, null);
+    }
+  }, [selectedSongId, isAuthenticated, showNamePrompt, updatePresence]);
 
   const handleAuthenticate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -166,7 +175,7 @@ export default function SharedGigPage() {
       setUpdatedAt(data.data.updatedAt || '');
       setLastEditedBy(data.data.lastEditedBy || '');
       setIsAuthenticated(true);
-      setShowNamePrompt(true); // Frage nach dem Namen beim ersten Zugriff
+      setShowNamePrompt(true);
     } catch (err) {
       console.error('Auth error:', err);
       setAuthError('Verbindungsfehler');
@@ -196,9 +205,21 @@ export default function SharedGigPage() {
     []
   );
 
+  const addSong = () => {
+    const newSong = createEmptySong(songs.length + 1, 'song');
+    setSongs([...songs, newSong]);
+    setSelectedSongId(newSong.id);
+    broadcastOperation({
+      type: 'ADD_SONG',
+      song: newSong,
+      position: songs.length,
+    });
+  };
+
   const addPause = () => {
     const newSong = createEmptySong(songs.length + 1, 'pause');
     setSongs([...songs, newSong]);
+    setSelectedSongId(newSong.id);
     broadcastOperation({
       type: 'ADD_SONG',
       song: newSong,
@@ -209,6 +230,7 @@ export default function SharedGigPage() {
   const addEncore = () => {
     const newSong = createEmptySong(songs.length + 1, 'encore');
     setSongs([...songs, newSong]);
+    setSelectedSongId(newSong.id);
     broadcastOperation({
       type: 'ADD_SONG',
       song: newSong,
@@ -217,42 +239,29 @@ export default function SharedGigPage() {
   };
 
   const calculateTotalDuration = () => {
-    let totalMinutes = 0;
     let totalSeconds = 0;
-
     songs.forEach((song) => {
       if (song.duration) {
         const parts = song.duration.split(':');
         if (parts.length === 2) {
-          totalMinutes += parseInt(parts[0], 10) || 0;
-          totalSeconds += parseInt(parts[1], 10) || 0;
+          totalSeconds += parseInt(parts[0] || '0') * 60 + parseInt(parts[1] || '0');
         }
       }
     });
 
-    totalMinutes += Math.floor(totalSeconds / 60);
-    totalSeconds = totalSeconds % 60;
-
-    return `${totalMinutes}:${totalSeconds.toString().padStart(2, '0')}`;
+    const hours = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+    if (hours > 0) {
+      return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const addSong = () => {
-    const newSong = createEmptySong(songs.length + 1);
-    setSongs([...songs, newSong]);
-    broadcastOperation({
-      type: 'ADD_SONG',
-      song: newSong,
-      position: songs.length,
-    });
-  };
+  const updateSong = (songId: string, updatedSong: Song) => {
+    const oldSong = songs.find(s => s.id === songId);
+    setSongs(songs.map((s) => (s.id === songId ? updatedSong : s)));
 
-  const updateSong = (index: number, updatedSong: Song) => {
-    const oldSong = songs[index];
-    const newSongs = [...songs];
-    newSongs[index] = updatedSong;
-    setSongs(newSongs);
-
-    // Broadcast changes (skip if remote update)
     if (!isRemoteUpdateRef.current && oldSong) {
       const fields = Object.keys(updatedSong) as (keyof Song)[];
       for (const field of fields) {
@@ -283,17 +292,27 @@ export default function SharedGigPage() {
     }
   };
 
-  const deleteSong = (index: number) => {
-    const songToDelete = songs[index];
-    const newSongs = songs.filter((_, i) => i !== index);
-    setSongs(newSongs.map((song, i) => ({ ...song, position: i + 1 })));
-
-    if (songToDelete) {
-      broadcastOperation({
-        type: 'DELETE_SONG',
-        songId: songToDelete.id,
-      });
+  const updateSongDuration = (songId: string, minutes: string, seconds: string) => {
+    const duration = `${minutes || '0'}:${seconds || '00'}`;
+    const song = songs.find(s => s.id === songId);
+    if (song) {
+      updateSong(songId, { ...song, duration });
     }
+  };
+
+  const deleteSong = (songId: string) => {
+    const newSongs = songs.filter((s) => s.id !== songId);
+    const updatedSongs = newSongs.map((song, i) => ({ ...song, position: i + 1 }));
+    setSongs(updatedSongs);
+
+    if (selectedSongId === songId) {
+      setSelectedSongId(updatedSongs.length > 0 ? updatedSongs[0].id : null);
+    }
+
+    broadcastOperation({
+      type: 'DELETE_SONG',
+      songId,
+    });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -355,7 +374,6 @@ export default function SharedGigPage() {
         return;
       }
 
-      // Update local state mit neuem Timestamp
       setUpdatedAt(data.updatedAt);
       setLastEditedBy(data.lastEditedBy);
       setSaveSuccess(true);
@@ -388,6 +406,7 @@ export default function SharedGigPage() {
         setSongs(data.data.songs || []);
         setUpdatedAt(data.data.updatedAt || '');
         setLastEditedBy(data.data.lastEditedBy || '');
+        setSelectedSongId(null);
       }
     } catch (err) {
       console.error('Reload error:', err);
@@ -408,7 +427,9 @@ export default function SharedGigPage() {
     });
   };
 
-  // Passwort-Eingabe Ansicht
+  const selectedSong = songs.find((s) => s.id === selectedSongId) || null;
+
+  // Password Entry View
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center p-4">
@@ -451,7 +472,7 @@ export default function SharedGigPage() {
     );
   }
 
-  // Name-Eingabe Modal
+  // Name Entry Modal
   if (showNamePrompt) {
     return (
       <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center p-4">
@@ -494,12 +515,12 @@ export default function SharedGigPage() {
     );
   }
 
-  // Gig-Bearbeitungs-Ansicht
+  // Main Editor View - Two Column Layout like Admin Panel
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
       {/* Header */}
       <header className="bg-white dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+        <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-indigo-600 rounded-lg">
@@ -515,7 +536,6 @@ export default function SharedGigPage() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              {/* Presence Indicator */}
               <PresenceIndicator
                 users={presenceUsers}
                 currentUserId={sessionId}
@@ -532,8 +552,8 @@ export default function SharedGigPage() {
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto p-4 pb-24">
-        {/* Konflikt-Warnung */}
+      <div className="max-w-7xl mx-auto p-4 pb-24">
+        {/* Conflict Warning */}
         {hasConflict && (
           <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
             <div className="flex items-start gap-3">
@@ -544,7 +564,7 @@ export default function SharedGigPage() {
                 </h3>
                 <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
                   Jemand anderes hat den Gig bearbeitet, während du Änderungen gemacht hast.
-                  Lade die Seite neu, um die neueste Version zu sehen (deine Änderungen gehen dabei verloren).
+                  Lade die Seite neu, um die neueste Version zu sehen.
                 </p>
                 <Button
                   onClick={handleReload}
@@ -601,19 +621,23 @@ export default function SharedGigPage() {
           </div>
         </Card>
 
-        {/* Songs List */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-4">
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                Songs ({songs.length})
-              </h2>
-              <div className="flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400">
-                <Clock className="w-4 h-4" />
-                <span>Gesamt: {calculateTotalDuration()}</span>
+        {/* Two-Column Layout */}
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Left Column - Song List */}
+          <div className="lg:w-1/2">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4">
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                  Songs ({songs.length})
+                </h2>
+                <div className="flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400">
+                  <Clock className="w-4 h-4" />
+                  <span>Gesamt: {calculateTotalDuration()}</span>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+
+            <div className="flex items-center gap-2 mb-4">
               <Button onClick={addSong} size="sm">
                 <Plus className="w-4 h-4 mr-2" />
                 Song
@@ -627,47 +651,63 @@ export default function SharedGigPage() {
                 Zugabe
               </Button>
             </div>
+
+            {songs.length === 0 ? (
+              <Card className="text-center py-12">
+                <p className="text-zinc-500 dark:text-zinc-400 mb-4">
+                  Noch keine Songs hinzugefügt
+                </p>
+                <Button onClick={addSong}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Ersten Song hinzufügen
+                </Button>
+              </Card>
+            ) : (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={songs.map((s) => s.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-2">
+                    {songs.map((song) => (
+                      <SongListItem
+                        key={song.id}
+                        song={song}
+                        isSelected={selectedSongId === song.id}
+                        onSelect={() => setSelectedSongId(song.id)}
+                        onDelete={() => deleteSong(song.id)}
+                        onDurationChange={(mins, secs) => updateSongDuration(song.id, mins, secs)}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            )}
           </div>
 
-          {songs.length === 0 ? (
-            <Card className="text-center py-12">
-              <p className="text-zinc-500 dark:text-zinc-400 mb-4">
-                Noch keine Songs hinzugefügt
-              </p>
-              <Button onClick={addSong}>
-                <Plus className="w-4 h-4 mr-2" />
-                Ersten Song hinzufügen
-              </Button>
+          {/* Right Column - Song Details Panel */}
+          <div className="lg:w-1/2">
+            <Card className="sticky top-4 h-[calc(100vh-280px)] overflow-hidden">
+              <SongDetailsPanel
+                song={selectedSong}
+                customFields={customFields}
+                onChange={(updatedSong) => {
+                  if (selectedSongId) {
+                    updateSong(selectedSongId, updatedSong);
+                  }
+                }}
+              />
             </Card>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={songs.map((s) => s.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="space-y-3">
-                  {songs.map((song, index) => (
-                    <SongCard
-                      key={song.id}
-                      song={song}
-                      customFields={customFields}
-                      onChange={(updated) => updateSong(index, updated)}
-                      onDelete={() => deleteSong(index)}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          )}
+          </div>
         </div>
 
         {/* Fixed Save Button */}
         <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-700 p-4">
-          <div className="max-w-4xl mx-auto flex justify-end">
+          <div className="max-w-7xl mx-auto flex justify-end">
             <Button onClick={handleSave} isLoading={isSaving}>
               <Save className="w-4 h-4 mr-2" />
               Speichern
