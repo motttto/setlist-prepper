@@ -737,24 +737,34 @@ export default function SetlistForm({
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="space-y-1.5 sm:space-y-2">
-                      {songs.map((song) => (
-                        <SongListItem
-                          key={song.id}
-                          song={song}
-                          isSelected={selectedSongId === song.id}
-                          onSelect={() => {
-                            setSelectedSongId(song.id);
-                            // Open modal on mobile
-                            if (window.innerWidth < 1024) {
-                              setShowMobileDetails(true);
-                            }
-                          }}
-                          onDelete={() => deleteSong(song.id)}
-                          onDuplicate={() => duplicateSong(song.id)}
-                          onToggleMute={() => toggleMute(song.id)}
-                          onDurationChange={(min, sec) => updateSongDuration(song.id, min, sec)}
-                        />
-                      ))}
+                      {(() => {
+                        let activePosition = 0;
+                        return songs.map((song) => {
+                          if (!song.muted && (song.type || 'song') === 'song') {
+                            activePosition++;
+                          }
+                          const displayPos = song.muted ? undefined : activePosition;
+                          return (
+                            <SongListItem
+                              key={song.id}
+                              song={song}
+                              displayPosition={displayPos}
+                              isSelected={selectedSongId === song.id}
+                              onSelect={() => {
+                                setSelectedSongId(song.id);
+                                // Open modal on mobile
+                                if (window.innerWidth < 1024) {
+                                  setShowMobileDetails(true);
+                                }
+                              }}
+                              onDelete={() => deleteSong(song.id)}
+                              onDuplicate={() => duplicateSong(song.id)}
+                              onToggleMute={() => toggleMute(song.id)}
+                              onDurationChange={(min, sec) => updateSongDuration(song.id, min, sec)}
+                            />
+                          );
+                        });
+                      })()}
                     </div>
                   </SortableContext>
                 </DndContext>

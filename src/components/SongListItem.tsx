@@ -8,6 +8,7 @@ import { GripVertical, Trash2, Coffee, Star, Music, Copy, VolumeX, Volume2 } fro
 
 interface SongListItemProps {
   song: Song;
+  displayPosition?: number; // Position nur unter aktiven (nicht-gemuteten) Songs
   isSelected: boolean;
   onSelect: () => void;
   onDelete: () => void;
@@ -18,6 +19,7 @@ interface SongListItemProps {
 
 export default function SongListItem({
   song,
+  displayPosition,
   isSelected,
   onSelect,
   onDelete,
@@ -141,8 +143,8 @@ export default function SongListItem({
         </button>
 
         {/* Position / Icon */}
-        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-700 text-xs font-medium">
-          {songType === 'song' ? song.position : typeStyles.icon}
+        <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium ${song.muted ? 'bg-zinc-200 dark:bg-zinc-600 text-zinc-400 dark:text-zinc-500' : 'bg-zinc-100 dark:bg-zinc-700'}`}>
+          {songType === 'song' ? (song.muted ? '–' : displayPosition ?? song.position) : typeStyles.icon}
         </div>
 
         {/* Title (click to select) */}

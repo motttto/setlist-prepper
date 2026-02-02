@@ -734,7 +734,7 @@ export default function SharedGigPage() {
               )}
               <span className="flex items-center gap-1.5">
                 <Music2 className="w-4 h-4" />
-                {songs.filter(s => (s.type || 'song') === 'song').length} Songs
+                {songs.filter(s => (s.type || 'song') === 'song' && !s.muted).length} Songs
               </span>
               <span className="text-zinc-500 dark:text-zinc-500">
                 Dauer: {calculateTotalDuration()}
@@ -766,7 +766,7 @@ export default function SharedGigPage() {
             {eventDate && <span>{formatEventDate(eventDate)}</span>}
             {venue && <span>{venue}</span>}
             {startTime && <span>{startTime} - {calculateEndTime()}</span>}
-            <span>{songs.filter(s => (s.type || 'song') === 'song').length} Songs</span>
+            <span>{songs.filter(s => (s.type || 'song') === 'song' && !s.muted).length} Songs</span>
             <span>Dauer: {calculateTotalDuration()}</span>
           </div>
         </div>
@@ -848,24 +848,34 @@ export default function SharedGigPage() {
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="space-y-1.5 sm:space-y-2">
-                      {songs.map((song) => (
-                        <SongListItem
-                          key={song.id}
-                          song={song}
-                          isSelected={selectedSongId === song.id}
-                          onSelect={() => {
-                            setSelectedSongId(song.id);
-                            // Open modal on mobile
-                            if (window.innerWidth < 1024) {
-                              setShowMobileDetails(true);
-                            }
-                          }}
-                          onDelete={() => deleteSong(song.id)}
-                          onDuplicate={() => duplicateSong(song.id)}
-                          onToggleMute={() => toggleMute(song.id)}
-                          onDurationChange={(mins, secs) => updateSongDuration(song.id, mins, secs)}
-                        />
-                      ))}
+                      {(() => {
+                        let activePosition = 0;
+                        return songs.map((song) => {
+                          if (!song.muted && (song.type || 'song') === 'song') {
+                            activePosition++;
+                          }
+                          const displayPos = song.muted ? undefined : activePosition;
+                          return (
+                            <SongListItem
+                              key={song.id}
+                              song={song}
+                              displayPosition={displayPos}
+                              isSelected={selectedSongId === song.id}
+                              onSelect={() => {
+                                setSelectedSongId(song.id);
+                                // Open modal on mobile
+                                if (window.innerWidth < 1024) {
+                                  setShowMobileDetails(true);
+                                }
+                              }}
+                              onDelete={() => deleteSong(song.id)}
+                              onDuplicate={() => duplicateSong(song.id)}
+                              onToggleMute={() => toggleMute(song.id)}
+                              onDurationChange={(mins, secs) => updateSongDuration(song.id, mins, secs)}
+                            />
+                          );
+                        });
+                      })()}
                     </div>
                   </SortableContext>
                 </DndContext>
