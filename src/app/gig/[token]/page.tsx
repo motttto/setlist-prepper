@@ -22,7 +22,8 @@ import { Song, CustomField } from '@/types';
 import SongListItem from '@/components/SongListItem';
 import SongDetailsPanel from '@/components/SongDetailsPanel';
 import { Button, Input, Card } from '@/components/ui';
-import { Plus, Lock, Music2, Coffee, Star, Clock, AlertTriangle, RefreshCw, User, Loader2, Cloud, CloudOff, Settings } from 'lucide-react';
+import { Plus, Lock, Music2, Coffee, Star, Clock, AlertTriangle, RefreshCw, User, Loader2, Cloud, CloudOff, Settings, FileDown } from 'lucide-react';
+import { exportSetlistToPdf } from '@/lib/pdfExport';
 import { SongType } from '@/types';
 import { useRealtimeSetlist } from '@/hooks/useRealtimeSetlist';
 import { PresenceIndicator } from '@/components/PresenceIndicator';
@@ -640,12 +641,25 @@ export default function SharedGigPage() {
                 </p>
               </div>
             </div>
-            <PresenceIndicator
-              users={presenceUsers}
-              currentUserId={sessionId}
-              currentUserName={editorName}
-              isConnected={isConnected}
-            />
+            <div className="flex items-center gap-3">
+              {/* PDF Export Button */}
+              {songs.length > 0 && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => exportSetlistToPdf({ title, eventDate, startTime, venue, songs })}
+                >
+                  <FileDown className="w-4 h-4 mr-1" />
+                  PDF
+                </Button>
+              )}
+              <PresenceIndicator
+                users={presenceUsers}
+                currentUserId={sessionId}
+                currentUserName={editorName}
+                isConnected={isConnected}
+              />
+            </div>
           </div>
         </div>
       </header>

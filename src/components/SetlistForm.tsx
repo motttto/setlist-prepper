@@ -21,7 +21,8 @@ import { Song, CustomField, Setlist, SongType } from '@/types';
 import SongListItem from './SongListItem';
 import SongDetailsPanel from './SongDetailsPanel';
 import { Button, Input, Card } from './ui';
-import { Plus, Save, ArrowLeft, Settings2, X, Clock, Coffee, Star, Check, Cloud, CloudOff, Loader2 } from 'lucide-react';
+import { Plus, Save, ArrowLeft, Settings2, X, Clock, Coffee, Star, Check, Cloud, CloudOff, Loader2, FileDown } from 'lucide-react';
+import { exportSetlistToPdf } from '@/lib/pdfExport';
 import Header from './Header';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -561,15 +562,29 @@ export default function SetlistForm({
             )}
           </div>
 
-          {/* Presence Indicator */}
-          {setlistId && (
-            <PresenceIndicator
-              users={presenceUsers}
-              currentUserId={editorId}
-              currentUserName={editorName}
-              isConnected={isConnected}
-            />
-          )}
+          <div className="flex items-center gap-3">
+            {/* PDF Export Button */}
+            {songs.length > 0 && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => exportSetlistToPdf({ title, eventDate, songs })}
+              >
+                <FileDown className="w-4 h-4 mr-1" />
+                PDF
+              </Button>
+            )}
+
+            {/* Presence Indicator */}
+            {setlistId && (
+              <PresenceIndicator
+                users={presenceUsers}
+                currentUserId={editorId}
+                currentUserName={editorName}
+                isConnected={isConnected}
+              />
+            )}
+          </div>
         </div>
 
         {error && (
