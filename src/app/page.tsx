@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui';
-import { Music2, Shield, ListMusic, Sparkles, ArrowRight } from 'lucide-react';
+import { Music2, ListMusic, Sparkles, ArrowRight } from 'lucide-react';
 
 export default function Home() {
   const { status } = useSession();
@@ -78,18 +78,6 @@ export default function Home() {
             </h3>
             <p className="text-zinc-600 dark:text-zinc-400">
               Erfasse jeden Song mit Visual-Beschreibungen, Timing, Beleuchtung und Bühnenanweisungen.
-            </p>
-          </div>
-
-          <div className="text-center p-6">
-            <div className="w-14 h-14 bg-indigo-100 dark:bg-indigo-900/50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Shield className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
-            </div>
-            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
-              Ende-zu-Ende verschlüsselt
-            </h3>
-            <p className="text-zinc-600 dark:text-zinc-400">
-              Deine kreativen Ideen bleiben privat. AES-256 Verschlüsselung direkt im Browser.
             </p>
           </div>
 

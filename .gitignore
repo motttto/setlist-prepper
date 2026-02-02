@@ -23,6 +23,8 @@
 # misc
 .DS_Store
 *.pem
+*_pws.txt
+*_passwords.txt
 
 # debug
 npm-debug.log*
