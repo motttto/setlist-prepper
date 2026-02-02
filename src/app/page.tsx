@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui';
-import { Music2, ListMusic, Sparkles, ArrowRight } from 'lucide-react';
+import { Music2, ListMusic, Sparkles, ArrowRight, Users, FileDown, Lock, Clock } from 'lucide-react';
 
 export default function Home() {
   const { status } = useSession();
@@ -49,7 +49,7 @@ export default function Home() {
           </h1>
           <p className="text-xl text-zinc-600 dark:text-zinc-400 mb-8 max-w-2xl mx-auto">
             Organisiere Setlists mit detaillierten Visual-Beschreibungen, Beleuchtungsnotizen
-            und Bühnenanweisungen. Alles verschlüsselt und sicher.
+            und Bühnenanweisungen. Arbeite in Echtzeit mit deinem Team.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/register">
@@ -67,7 +67,7 @@ export default function Home() {
         </div>
 
         {/* Features */}
-        <div className="grid md:grid-cols-3 gap-8 mt-24 max-w-5xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-6 mt-24 max-w-5xl mx-auto">
           <div className="text-center p-6">
             <div className="w-14 h-14 bg-indigo-100 dark:bg-indigo-900/50 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <ListMusic className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
@@ -82,6 +82,30 @@ export default function Home() {
 
           <div className="text-center p-6">
             <div className="w-14 h-14 bg-indigo-100 dark:bg-indigo-900/50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Users className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
+              Echtzeit-Kollaboration
+            </h3>
+            <p className="text-zinc-600 dark:text-zinc-400">
+              Arbeite live mit deinem Team an Setlists. Änderungen werden sofort synchronisiert.
+            </p>
+          </div>
+
+          <div className="text-center p-6">
+            <div className="w-14 h-14 bg-indigo-100 dark:bg-indigo-900/50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <FileDown className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
+              PDF-Export
+            </h3>
+            <p className="text-zinc-600 dark:text-zinc-400">
+              Exportiere deine Setlists als professionelle PDFs für die Bühne oder das Archiv.
+            </p>
+          </div>
+
+          <div className="text-center p-6">
+            <div className="w-14 h-14 bg-indigo-100 dark:bg-indigo-900/50 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Sparkles className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
             </div>
             <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
@@ -89,6 +113,30 @@ export default function Home() {
             </h3>
             <p className="text-zinc-600 dark:text-zinc-400">
               Erstelle benutzerdefinierte Felder für deine spezifischen Workflow-Anforderungen.
+            </p>
+          </div>
+
+          <div className="text-center p-6">
+            <div className="w-14 h-14 bg-indigo-100 dark:bg-indigo-900/50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Clock className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
+              Timing & Pausen
+            </h3>
+            <p className="text-zinc-600 dark:text-zinc-400">
+              Plane Songdauern, Pausen und Zugaben. Behalte die Gesamtdauer im Blick.
+            </p>
+          </div>
+
+          <div className="text-center p-6">
+            <div className="w-14 h-14 bg-indigo-100 dark:bg-indigo-900/50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
+              Passwortgeschützt
+            </h3>
+            <p className="text-zinc-600 dark:text-zinc-400">
+              Teile Setlists mit deinem Team über passwortgeschützte Links.
             </p>
           </div>
         </div>

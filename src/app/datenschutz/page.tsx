@@ -71,7 +71,7 @@ export default function DatenschutzPage() {
             <ul className="list-disc list-inside text-zinc-600 dark:text-zinc-400 mb-4 space-y-1">
               <li>E-Mail-Adresse (für die Registrierung und Anmeldung)</li>
               <li>Name (optional, bei der Registrierung)</li>
-              <li>Setlist-Daten (verschlüsselt gespeichert)</li>
+              <li>Setlist-Daten (Song-Titel, Notizen, Visual-Beschreibungen)</li>
             </ul>
             <h3 className="text-lg font-medium text-zinc-800 dark:text-zinc-200 mb-2">
               Wie erfassen wir Ihre Daten?
@@ -100,12 +100,11 @@ export default function DatenschutzPage() {
 
           <section>
             <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-3">
-              5. Verschlüsselung
+              5. Datensicherheit
             </h2>
             <p className="text-zinc-600 dark:text-zinc-400">
-              Alle Setlist-Daten werden clientseitig verschlüsselt, bevor sie an unsere Server
-              gesendet werden. Der Verschlüsselungsschlüssel wird aus Ihrem Passwort abgeleitet
-              und niemals an unsere Server übertragen.
+              Die Übertragung aller Daten erfolgt verschlüsselt über HTTPS. Geteilte Setlists
+              sind zusätzlich durch ein Passwort geschützt, das als Hash gespeichert wird.
             </p>
           </section>
 

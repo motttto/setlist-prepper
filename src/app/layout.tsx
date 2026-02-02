@@ -14,9 +14,33 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Setlist Prepper - Konzert-Visual-Planung',
+  title: 'Setlist Prepper - Konzert-Setlists mit Visual-Planung',
   description:
-    'Plane deine Konzert-Setlists mit Fokus auf Visuals. Verschlüsselte Speicherung deiner kreativen Ideen.',
+    'Plane Konzert-Setlists mit Visual-Beschreibungen, Beleuchtungsnotizen und Bühnenanweisungen. Echtzeit-Kollaboration im Team und PDF-Export.',
+  keywords: [
+    'Setlist',
+    'Konzert',
+    'Visuals',
+    'VJ',
+    'Lichtdesign',
+    'Bühnenshow',
+    'Kollaboration',
+    'Bandplanung',
+  ],
+  authors: [{ name: 'Setlist Prepper' }],
+  openGraph: {
+    title: 'Setlist Prepper - Konzert-Setlists mit Visual-Planung',
+    description:
+      'Plane Konzert-Setlists mit Visual-Beschreibungen und Echtzeit-Kollaboration im Team.',
+    type: 'website',
+    locale: 'de_DE',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Setlist Prepper - Konzert-Setlists mit Visual-Planung',
+    description:
+      'Plane Konzert-Setlists mit Visual-Beschreibungen und Echtzeit-Kollaboration im Team.',
+  },
 };
 
 export default function RootLayout({
