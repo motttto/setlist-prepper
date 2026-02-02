@@ -811,7 +811,7 @@ export default function SharedGigPage() {
             </div>
 
             {/* Song Details */}
-            <div className="overflow-y-auto min-h-0 bg-zinc-50 dark:bg-zinc-900 rounded-lg border border-zinc-300 dark:border-zinc-700">
+            <div className="overflow-y-auto min-h-0 bg-zinc-100 dark:bg-zinc-800 rounded-lg border border-zinc-300 dark:border-zinc-700">
               <SongDetailsPanel
                 song={selectedSong}
                 customFields={customFields}
@@ -835,7 +835,7 @@ export default function SharedGigPage() {
             <div className="flex items-center gap-2">
               <Settings className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
-                Einstellungen
+                Eigene Felder
               </span>
               {customFields.length > 0 && (
                 <span className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -858,7 +858,7 @@ export default function SharedGigPage() {
             <div className="hidden lg:flex items-center gap-2 mb-4">
               <Settings className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
-                Einstellungen
+                Eigene Felder
               </h3>
             </div>
 
