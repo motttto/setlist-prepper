@@ -1,17 +1,29 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createBrowserClient } from '@supabase/ssr';
 
-// Environment variables
+// Server-side environment variables (only available on server)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 // Server-side Supabase client (for API routes) - uses Service Role Key to bypass RLS
 export const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Browser-side Supabase client
+// Browser-side Supabase client - singleton pattern
+let browserClient: SupabaseClient | null = null;
+
 export function createSupabaseBrowserClient() {
-  return createBrowserClient(supabaseUrl, supabaseAnonKey);
+  if (browserClient) return browserClient;
+
+  // Read env vars at runtime for browser
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    throw new Error('Missing Supabase environment variables');
+  }
+
+  browserClient = createBrowserClient(url, anonKey);
+  return browserClient;
 }
 
 // Database Types
