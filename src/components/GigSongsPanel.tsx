@@ -35,6 +35,7 @@ import {
   Cloud,
   CloudOff,
   FileDown,
+  X,
 } from 'lucide-react';
 import { exportSetlistToPdf } from '@/lib/pdfExport';
 
@@ -67,6 +68,7 @@ export default function GigSongsPanel({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [showMobileDetails, setShowMobileDetails] = useState(false);
   const initialLoadRef = useRef(true);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const AUTO_SAVE_DELAY = 2000; // 2 seconds debounce
@@ -365,80 +367,92 @@ export default function GigSongsPanel({
   return (
     <div className="h-full flex flex-col">
       {/* Compact Header */}
-      <div className="flex-shrink-0 mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-            {title || 'Unbenannter Gig'}
-          </h2>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => exportSetlistToPdf({ title, eventDate, startTime, venue, songs })}
-            className="ml-2"
-          >
-            <FileDown className="w-4 h-4 mr-1" />
-            PDF
-          </Button>
-          {/* Save Status Indicator */}
-          {saveStatus === 'saving' && (
-            <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
-              <Loader2 className="w-3 h-3 animate-spin" />
-              Speichert...
-            </span>
-          )}
-          {saveStatus === 'saved' && (
-            <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded-full">
-              <Cloud className="w-3 h-3" />
-              Gespeichert
-            </span>
-          )}
-          {saveStatus === 'error' && (
-            <span className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
-              <CloudOff className="w-3 h-3" />
-              Fehler
-            </span>
-          )}
-          {saveStatus === 'idle' && lastSavedAt && (
-            <span className="text-xs text-zinc-400 dark:text-zinc-500">
-              Zuletzt gespeichert {lastSavedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-4 text-xs text-zinc-500 dark:text-zinc-400">
-          {eventDate && (
-            <span className="flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5" />
-              {formatDate(eventDate)}
-            </span>
-          )}
-          {startTime && (
-            <span className="flex items-center gap-1">
-              <Play className="w-3.5 h-3.5" />
-              {startTime} Uhr
-            </span>
-          )}
-          {venue && (
-            <span className="flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5" />
-              {venue}
-            </span>
-          )}
-          {songs.length > 0 && (
-            <>
-              <span className="flex items-center gap-1">
-                <Music2 className="w-3.5 h-3.5" />
-                {songs.filter(s => (s.type || 'song') === 'song').length} Songs
+      <div className="flex-shrink-0 mb-2 sm:mb-4">
+        {/* First Row: Title, PDF, Save Status */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-zinc-100">
+              {title || 'Unbenannter Gig'}
+            </h2>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => exportSetlistToPdf({ title, eventDate, startTime, venue, songs })}
+              className="px-2 sm:px-3"
+            >
+              <FileDown className="w-4 h-4" />
+              <span className="hidden sm:inline ml-1">PDF</span>
+            </Button>
+            {/* Save Status Indicator */}
+            {saveStatus === 'saving' && (
+              <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span className="hidden sm:inline">Speichert...</span>
               </span>
-              <span className="flex items-center gap-1">
-                Dauer {calculateTotalDuration()}
+            )}
+            {saveStatus === 'saved' && (
+              <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded-full">
+                <Cloud className="w-3 h-3" />
+                <span className="hidden sm:inline">Gespeichert</span>
               </span>
-              {startTime && (
+            )}
+            {saveStatus === 'error' && (
+              <span className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
+                <CloudOff className="w-3 h-3" />
+                <span className="hidden sm:inline">Fehler</span>
+              </span>
+            )}
+            {saveStatus === 'idle' && lastSavedAt && (
+              <span className="hidden sm:inline text-xs text-zinc-400 dark:text-zinc-500">
+                Zuletzt gespeichert {lastSavedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </div>
+          {/* Desktop Gig Info */}
+          <div className="hidden lg:flex items-center gap-4 text-xs text-zinc-500 dark:text-zinc-400">
+            {eventDate && (
+              <span className="flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5" />
+                {formatDate(eventDate)}
+              </span>
+            )}
+            {startTime && (
+              <span className="flex items-center gap-1">
+                <Play className="w-3.5 h-3.5" />
+                {startTime} Uhr
+              </span>
+            )}
+            {venue && (
+              <span className="flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5" />
+                {venue}
+              </span>
+            )}
+            {songs.length > 0 && (
+              <>
                 <span className="flex items-center gap-1">
-                  Ende {calculateEndTime()}
+                  <Music2 className="w-3.5 h-3.5" />
+                  {songs.filter(s => (s.type || 'song') === 'song').length} Songs
                 </span>
-              )}
-            </>
-          )}
+                <span className="flex items-center gap-1">
+                  Dauer {calculateTotalDuration()}
+                </span>
+                {startTime && (
+                  <span className="flex items-center gap-1">
+                    Ende {calculateEndTime()}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+        {/* Mobile Gig Info Row */}
+        <div className="lg:hidden mt-2 pt-2 border-t border-zinc-200 dark:border-zinc-700 text-xs text-zinc-500 dark:text-zinc-400 flex flex-wrap items-center gap-x-3 gap-y-1">
+          {eventDate && <span>{formatDate(eventDate)}</span>}
+          {venue && <span>{venue}</span>}
+          {startTime && <span>{startTime} - {calculateEndTime()}</span>}
+          <span>{songs.filter(s => (s.type || 'song') === 'song').length} Songs</span>
+          <span>Dauer: {calculateTotalDuration()}</span>
         </div>
       </div>
 
@@ -457,29 +471,29 @@ export default function GigSongsPanel({
         </div>
       )}
 
-      {/* Add Buttons */}
-      <div className="flex-shrink-0 flex gap-2 mb-4">
-        <Button onClick={addSong} size="sm">
-          <Plus className="w-4 h-4 mr-1" />
-          Song
+      {/* Add Buttons - compact on mobile */}
+      <div className="flex-shrink-0 flex gap-1.5 sm:gap-2 mb-2 sm:mb-4">
+        <Button onClick={addSong} size="sm" className="px-2 sm:px-3">
+          <Plus className="w-4 h-4" />
+          <span className="hidden sm:inline ml-1">Song</span>
         </Button>
-        <Button onClick={addPause} variant="secondary" size="sm">
-          <Coffee className="w-4 h-4 mr-1" />
-          Pause
+        <Button onClick={addPause} variant="secondary" size="sm" className="px-2 sm:px-3">
+          <Coffee className="w-4 h-4" />
+          <span className="hidden sm:inline ml-1">Pause</span>
         </Button>
-        <Button onClick={addEncore} variant="secondary" size="sm">
-          <Star className="w-4 h-4 mr-1" />
-          Zugabe
+        <Button onClick={addEncore} variant="secondary" size="sm" className="px-2 sm:px-3">
+          <Star className="w-4 h-4" />
+          <span className="hidden sm:inline ml-1">Zugabe</span>
         </Button>
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-0 overflow-hidden">
-        {/* Song List */}
-        <div className="overflow-y-auto min-h-0">
+      <div className="flex-1 flex gap-2 sm:gap-4 min-h-0 overflow-hidden">
+        {/* Song List - full width on mobile */}
+        <div className="flex-1 lg:flex-none lg:w-1/2 overflow-y-auto min-h-0">
           {songs.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-zinc-500 dark:text-zinc-400 mb-4">
+            <div className="text-center py-6 sm:py-8">
+              <p className="text-zinc-500 dark:text-zinc-400 mb-3 sm:mb-4 text-sm">
                 Noch keine Songs
               </p>
               <Button onClick={addSong} size="sm">
@@ -497,13 +511,19 @@ export default function GigSongsPanel({
                 items={songs.map((s) => s.id)}
                 strategy={verticalListSortingStrategy}
               >
-                <div className="space-y-2">
+                <div className="space-y-1.5 sm:space-y-2">
                   {songs.map((song) => (
                     <SongListItem
                       key={song.id}
                       song={song}
                       isSelected={selectedSongId === song.id}
-                      onSelect={() => setSelectedSongId(song.id)}
+                      onSelect={() => {
+                        setSelectedSongId(song.id);
+                        // Open modal on mobile
+                        if (window.innerWidth < 1024) {
+                          setShowMobileDetails(true);
+                        }
+                      }}
                       onDelete={() => deleteSong(song.id)}
                       onDurationChange={(min, sec) => updateSongDuration(song.id, min, sec)}
                     />
@@ -514,8 +534,8 @@ export default function GigSongsPanel({
           )}
         </div>
 
-        {/* Song Details */}
-        <div className="overflow-y-auto min-h-0 bg-zinc-50 dark:bg-zinc-900 rounded-lg border border-zinc-300 dark:border-zinc-700">
+        {/* Song Details - Desktop only */}
+        <div className="hidden lg:block lg:w-1/2 overflow-y-auto min-h-0 bg-zinc-50 dark:bg-zinc-900 rounded-lg border border-zinc-300 dark:border-zinc-700">
           <SongDetailsPanel
             song={selectedSong}
             customFields={customFields}
@@ -523,6 +543,37 @@ export default function GigSongsPanel({
           />
         </div>
       </div>
+
+      {/* Mobile Song Details Modal */}
+      {showMobileDetails && selectedSong && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setShowMobileDetails(false)}>
+          <div
+            className="absolute inset-x-0 bottom-0 top-12 bg-zinc-100 dark:bg-zinc-800 rounded-t-2xl overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-3 border-b border-zinc-300 dark:border-zinc-700 bg-zinc-200 dark:bg-zinc-900">
+              <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">
+                {selectedSong.title || 'Song bearbeiten'}
+              </h3>
+              <button
+                onClick={() => setShowMobileDetails(false)}
+                className="p-2 rounded-full hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
+              >
+                <X className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
+              </button>
+            </div>
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto">
+              <SongDetailsPanel
+                song={selectedSong}
+                customFields={customFields}
+                onChange={(updated) => updateSong(updated.id, updated)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

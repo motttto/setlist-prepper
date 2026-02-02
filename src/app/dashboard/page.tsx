@@ -9,6 +9,7 @@ import GigsList from '@/components/GigsList';
 import GigSongsPanel from '@/components/GigSongsPanel';
 import SettingsPanel from '@/components/SettingsPanel';
 import { ConfirmModal } from '@/components/ui';
+import { ListMusic, Music2, Settings } from 'lucide-react';
 
 export default function DashboardPage() {
   const { status } = useSession();
@@ -34,6 +35,9 @@ export default function DashboardPage() {
   // Unsaved changes tracking
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [pendingGigSwitch, setPendingGigSwitch] = useState<string | null>(null);
+
+  // Mobile tab navigation
+  const [mobileTab, setMobileTab] = useState<'gigs' | 'songs' | 'settings'>('songs');
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -243,8 +247,8 @@ export default function DashboardPage() {
     <div className="h-screen flex flex-col bg-zinc-200 dark:bg-zinc-950">
       <Header />
 
-      {/* Three Column Layout */}
-      <main className="flex-1 flex overflow-hidden">
+      {/* Desktop: Three Column Layout */}
+      <main className="hidden lg:flex flex-1 overflow-hidden">
         {/* Left Column - Gigs */}
         <div className="w-72 flex-shrink-0 border-r border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 overflow-hidden">
           <GigsList
@@ -284,6 +288,99 @@ export default function DashboardPage() {
             onDeleteField={handleDeleteCustomField}
             isLoading={isLoadingFields}
           />
+        </div>
+      </main>
+
+      {/* Mobile: Tab-based Layout */}
+      <main className="lg:hidden flex-1 flex flex-col overflow-hidden">
+        {/* Mobile Content Area */}
+        <div className="flex-1 overflow-hidden">
+          {/* Gigs Tab */}
+          {mobileTab === 'gigs' && (
+            <div className="h-full bg-white dark:bg-zinc-900 p-3 overflow-hidden">
+              <GigsList
+                gigs={gigs}
+                selectedGigId={selectedGigId}
+                onSelectGig={(id) => {
+                  if (hasUnsavedChanges && id !== selectedGigId) {
+                    setPendingGigSwitch(id);
+                  } else {
+                    setSelectedGigId(id);
+                    setMobileTab('songs');
+                  }
+                }}
+                onDeleteGig={handleDeleteGig}
+                onNewGig={handleNewGig}
+                onEditGig={handleEditGig}
+                isLoading={isLoadingGigs}
+              />
+            </div>
+          )}
+
+          {/* Songs Tab */}
+          {mobileTab === 'songs' && (
+            <div className="h-full p-2 sm:p-3 overflow-hidden">
+              <GigSongsPanel
+                setlist={selectedSetlist}
+                customFields={customFields}
+                onSave={handleSaveSetlist}
+                isLoading={isLoadingSetlist}
+                openEditDialogTrigger={editDialogTrigger}
+                onUnsavedChanges={setHasUnsavedChanges}
+              />
+            </div>
+          )}
+
+          {/* Settings Tab */}
+          {mobileTab === 'settings' && (
+            <div className="h-full bg-white dark:bg-zinc-900 p-3 overflow-hidden">
+              <SettingsPanel
+                customFields={customFields}
+                onAddField={handleAddCustomField}
+                onDeleteField={handleDeleteCustomField}
+                isLoading={isLoadingFields}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Tab Bar */}
+        <div className="flex-shrink-0 bg-white dark:bg-zinc-900 border-t border-zinc-300 dark:border-zinc-800 px-2 py-1 safe-area-inset-bottom">
+          <div className="flex justify-around">
+            <button
+              onClick={() => setMobileTab('gigs')}
+              className={`flex flex-col items-center py-2 px-4 rounded-lg transition-colors ${
+                mobileTab === 'gigs'
+                  ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30'
+                  : 'text-zinc-500 dark:text-zinc-400'
+              }`}
+            >
+              <ListMusic className="w-5 h-5" />
+              <span className="text-xs mt-0.5">Gigs</span>
+            </button>
+            <button
+              onClick={() => setMobileTab('songs')}
+              className={`flex flex-col items-center py-2 px-4 rounded-lg transition-colors ${
+                mobileTab === 'songs'
+                  ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30'
+                  : 'text-zinc-500 dark:text-zinc-400'
+              }`}
+            >
+              <Music2 className="w-5 h-5" />
+              <span className="text-xs mt-0.5">Songs</span>
+            </button>
+            <button
+              onClick={() => setMobileTab('settings')}
+              className={`flex flex-col items-center py-2 px-4 rounded-lg transition-colors ${
+                mobileTab === 'settings'
+                  ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30'
+                  : 'text-zinc-500 dark:text-zinc-400'
+              }`}
+            >
+              <Settings className="w-5 h-5" />
+              <span className="text-xs mt-0.5">Felder</span>
+            </button>
+          </div>
         </div>
       </main>
 
