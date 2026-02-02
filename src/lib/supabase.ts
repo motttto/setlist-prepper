@@ -53,6 +53,7 @@ export interface DbCustomField {
   user_id: string;
   field_name: string;
   field_type: string;
+  dropdown_options: string[] | null;
   created_at: string;
 }
 
@@ -188,7 +189,8 @@ export async function getCustomFieldsByUser(
 export async function createCustomField(
   userId: string,
   fieldName: string,
-  fieldType: string = 'text'
+  fieldType: string = 'text',
+  dropdownOptions?: string[]
 ): Promise<DbCustomField> {
   const { data, error } = await supabase
     .from('custom_fields')
@@ -196,6 +198,7 @@ export async function createCustomField(
       user_id: userId,
       field_name: fieldName,
       field_type: fieldType,
+      dropdown_options: dropdownOptions || null,
     })
     .select()
     .single();

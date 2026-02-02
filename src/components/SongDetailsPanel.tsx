@@ -1,22 +1,30 @@
 'use client';
 
 import { useState } from 'react';
-import { Song, CustomField, TransitionType } from '@/types';
+import { Song, CustomField, CustomFieldType, TransitionType } from '@/types';
 import { Input, Textarea, Button } from './ui';
-import { Plus, X, Music, Coffee, Star, ExternalLink } from 'lucide-react';
+import { Plus, X, Music, Coffee, Star, ExternalLink, ChevronDown, Trash2 } from 'lucide-react';
 
 interface SongDetailsPanelProps {
   song: Song | null;
   customFields: CustomField[];
   onChange: (song: Song) => void;
+  onAddCustomField?: (field: { fieldName: string; fieldType: CustomFieldType; dropdownOptions?: string[] }) => void;
+  onDeleteCustomField?: (fieldId: string) => void;
 }
 
 export default function SongDetailsPanel({
   song,
   customFields,
   onChange,
+  onAddCustomField,
+  onDeleteCustomField,
 }: SongDetailsPanelProps) {
   const [newMediaLink, setNewMediaLink] = useState('');
+  const [showAddField, setShowAddField] = useState(false);
+  const [newFieldName, setNewFieldName] = useState('');
+  const [newFieldType, setNewFieldType] = useState<CustomFieldType>('text');
+  const [newDropdownOptions, setNewDropdownOptions] = useState('');
 
   if (!song) {
     return (
@@ -268,14 +276,14 @@ export default function SongDetailsPanel({
             </div>
 
             {/* Custom Fields */}
-            {customFields.length > 0 && (
-              <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700">
-                <h4 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
-                  Eigene Felder
-                </h4>
-                <div className="space-y-3">
+            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700">
+              <h4 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+                Eigene Felder
+              </h4>
+              {customFields.length > 0 && (
+                <div className="space-y-3 mb-4">
                   {customFields.map((field) => (
-                    <div key={field.id}>
+                    <div key={field.id} className="relative group">
                       {field.fieldType === 'textarea' ? (
                         <Textarea
                           label={field.fieldName}
@@ -284,6 +292,39 @@ export default function SongDetailsPanel({
                             handleCustomFieldChange(field.fieldName, e.target.value)
                           }
                         />
+                      ) : field.fieldType === 'checkbox' ? (
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={song.customFields[field.fieldName] === 'true'}
+                            onChange={(e) =>
+                              handleCustomFieldChange(field.fieldName, e.target.checked ? 'true' : 'false')
+                            }
+                            className="w-5 h-5 rounded border-zinc-300 dark:border-zinc-600 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span className="text-sm text-zinc-700 dark:text-zinc-300">{field.fieldName}</span>
+                        </label>
+                      ) : field.fieldType === 'dropdown' ? (
+                        <div>
+                          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                            {field.fieldName}
+                          </label>
+                          <div className="relative">
+                            <select
+                              value={song.customFields[field.fieldName] || ''}
+                              onChange={(e) =>
+                                handleCustomFieldChange(field.fieldName, e.target.value)
+                              }
+                              className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none pr-10"
+                            >
+                              <option value="">Auswählen...</option>
+                              {(field.dropdownOptions || []).map((option, idx) => (
+                                <option key={idx} value={option}>{option}</option>
+                              ))}
+                            </select>
+                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+                          </div>
+                        </div>
                       ) : (
                         <Input
                           label={field.fieldName}
@@ -293,11 +334,109 @@ export default function SongDetailsPanel({
                           }
                         />
                       )}
+                      {onDeleteCustomField && (
+                        <button
+                          onClick={() => onDeleteCustomField(field.id)}
+                          className="absolute -right-2 -top-2 p-1 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Feld löschen"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+
+              {/* Add new custom field */}
+              {onAddCustomField && (
+                <div className="mt-3">
+                  {!showAddField ? (
+                    <button
+                      onClick={() => setShowAddField(true)}
+                      className="flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Neues Feld hinzufügen
+                    </button>
+                  ) : (
+                    <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-zinc-200 dark:border-zinc-700 space-y-3">
+                      <Input
+                        label="Feldname"
+                        value={newFieldName}
+                        onChange={(e) => setNewFieldName(e.target.value)}
+                        placeholder="z.B. Instrument, Stimmung..."
+                      />
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                          Feldtyp
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={newFieldType}
+                            onChange={(e) => setNewFieldType(e.target.value as CustomFieldType)}
+                            className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none pr-10"
+                          >
+                            <option value="text">Text (einzeilig)</option>
+                            <option value="textarea">Text (mehrzeilig)</option>
+                            <option value="checkbox">Checkbox</option>
+                            <option value="dropdown">Dropdown</option>
+                          </select>
+                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+                        </div>
+                      </div>
+                      {newFieldType === 'dropdown' && (
+                        <Input
+                          label="Optionen (kommagetrennt)"
+                          value={newDropdownOptions}
+                          onChange={(e) => setNewDropdownOptions(e.target.value)}
+                          placeholder="Option 1, Option 2, Option 3"
+                        />
+                      )}
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="primary"
+                          size="sm"
+                          onClick={() => {
+                            if (newFieldName.trim()) {
+                              const dropdownOptions = newFieldType === 'dropdown'
+                                ? newDropdownOptions.split(',').map(o => o.trim()).filter(Boolean)
+                                : undefined;
+                              onAddCustomField({
+                                fieldName: newFieldName.trim(),
+                                fieldType: newFieldType,
+                                dropdownOptions,
+                              });
+                              setNewFieldName('');
+                              setNewFieldType('text');
+                              setNewDropdownOptions('');
+                              setShowAddField(false);
+                            }
+                          }}
+                          disabled={!newFieldName.trim()}
+                        >
+                          Hinzufügen
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setShowAddField(false);
+                            setNewFieldName('');
+                            setNewFieldType('text');
+                            setNewDropdownOptions('');
+                          }}
+                        >
+                          Abbrechen
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </>
         ) : (
           /* Pause / Encore - Titel und Notizen */
@@ -317,14 +456,14 @@ export default function SongDetailsPanel({
             />
 
             {/* Custom Fields for Pause/Encore too */}
-            {customFields.length > 0 && (
-              <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700">
-                <h4 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
-                  Eigene Felder
-                </h4>
-                <div className="space-y-3">
+            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700">
+              <h4 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+                Eigene Felder
+              </h4>
+              {customFields.length > 0 && (
+                <div className="space-y-3 mb-4">
                   {customFields.map((field) => (
-                    <div key={field.id}>
+                    <div key={field.id} className="relative group">
                       {field.fieldType === 'textarea' ? (
                         <Textarea
                           label={field.fieldName}
@@ -333,6 +472,39 @@ export default function SongDetailsPanel({
                             handleCustomFieldChange(field.fieldName, e.target.value)
                           }
                         />
+                      ) : field.fieldType === 'checkbox' ? (
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={song.customFields[field.fieldName] === 'true'}
+                            onChange={(e) =>
+                              handleCustomFieldChange(field.fieldName, e.target.checked ? 'true' : 'false')
+                            }
+                            className="w-5 h-5 rounded border-zinc-300 dark:border-zinc-600 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span className="text-sm text-zinc-700 dark:text-zinc-300">{field.fieldName}</span>
+                        </label>
+                      ) : field.fieldType === 'dropdown' ? (
+                        <div>
+                          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                            {field.fieldName}
+                          </label>
+                          <div className="relative">
+                            <select
+                              value={song.customFields[field.fieldName] || ''}
+                              onChange={(e) =>
+                                handleCustomFieldChange(field.fieldName, e.target.value)
+                              }
+                              className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none pr-10"
+                            >
+                              <option value="">Auswählen...</option>
+                              {(field.dropdownOptions || []).map((option, idx) => (
+                                <option key={idx} value={option}>{option}</option>
+                              ))}
+                            </select>
+                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+                          </div>
+                        </div>
                       ) : (
                         <Input
                           label={field.fieldName}
@@ -342,11 +514,109 @@ export default function SongDetailsPanel({
                           }
                         />
                       )}
+                      {onDeleteCustomField && (
+                        <button
+                          onClick={() => onDeleteCustomField(field.id)}
+                          className="absolute -right-2 -top-2 p-1 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Feld löschen"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+
+              {/* Add new custom field */}
+              {onAddCustomField && (
+                <div className="mt-3">
+                  {!showAddField ? (
+                    <button
+                      onClick={() => setShowAddField(true)}
+                      className="flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Neues Feld hinzufügen
+                    </button>
+                  ) : (
+                    <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-zinc-200 dark:border-zinc-700 space-y-3">
+                      <Input
+                        label="Feldname"
+                        value={newFieldName}
+                        onChange={(e) => setNewFieldName(e.target.value)}
+                        placeholder="z.B. Instrument, Stimmung..."
+                      />
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                          Feldtyp
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={newFieldType}
+                            onChange={(e) => setNewFieldType(e.target.value as CustomFieldType)}
+                            className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none pr-10"
+                          >
+                            <option value="text">Text (einzeilig)</option>
+                            <option value="textarea">Text (mehrzeilig)</option>
+                            <option value="checkbox">Checkbox</option>
+                            <option value="dropdown">Dropdown</option>
+                          </select>
+                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+                        </div>
+                      </div>
+                      {newFieldType === 'dropdown' && (
+                        <Input
+                          label="Optionen (kommagetrennt)"
+                          value={newDropdownOptions}
+                          onChange={(e) => setNewDropdownOptions(e.target.value)}
+                          placeholder="Option 1, Option 2, Option 3"
+                        />
+                      )}
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="primary"
+                          size="sm"
+                          onClick={() => {
+                            if (newFieldName.trim()) {
+                              const dropdownOptions = newFieldType === 'dropdown'
+                                ? newDropdownOptions.split(',').map(o => o.trim()).filter(Boolean)
+                                : undefined;
+                              onAddCustomField({
+                                fieldName: newFieldName.trim(),
+                                fieldType: newFieldType,
+                                dropdownOptions,
+                              });
+                              setNewFieldName('');
+                              setNewFieldType('text');
+                              setNewDropdownOptions('');
+                              setShowAddField(false);
+                            }
+                          }}
+                          disabled={!newFieldName.trim()}
+                        >
+                          Hinzufügen
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setShowAddField(false);
+                            setNewFieldName('');
+                            setNewFieldType('text');
+                            setNewDropdownOptions('');
+                          }}
+                        >
+                          Abbrechen
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>

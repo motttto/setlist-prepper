@@ -18,7 +18,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { v4 as uuidv4 } from 'uuid';
-import { Song, CustomField } from '@/types';
+import { Song, CustomField, CustomFieldType } from '@/types';
 import SongListItem from '@/components/SongListItem';
 import SongDetailsPanel from '@/components/SongDetailsPanel';
 import { Button, Input, Card } from '@/components/ui';
@@ -57,9 +57,10 @@ export default function SharedGigPage() {
   const [sessionId] = useState(() => uuidv4());
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
-  // Custom field creation
+  // Custom field creation (nur im Settings Panel für ältere Felder)
   const [newFieldName, setNewFieldName] = useState('');
-  const [newFieldType, setNewFieldType] = useState<'text' | 'textarea'>('text');
+  const [newFieldType, setNewFieldType] = useState<CustomFieldType>('text');
+  const [newDropdownOptions, setNewDropdownOptions] = useState('');
   const [isAddingField, setIsAddingField] = useState(false);
   const [fieldError, setFieldError] = useState('');
   const [showSettings, setShowSettings] = useState(false);
@@ -475,8 +476,12 @@ export default function SharedGigPage() {
     });
   };
 
-  const handleAddCustomField = async () => {
-    if (!newFieldName.trim()) return;
+  const handleAddCustomField = async (fieldData?: { fieldName: string; fieldType: CustomFieldType; dropdownOptions?: string[] }) => {
+    const fieldName = fieldData?.fieldName || newFieldName.trim();
+    const fieldType = fieldData?.fieldType || newFieldType;
+    const dropdownOptions = fieldData?.dropdownOptions || (newFieldType === 'dropdown' ? newDropdownOptions.split(',').map(o => o.trim()).filter(Boolean) : undefined);
+
+    if (!fieldName) return;
 
     setIsAddingField(true);
     setFieldError('');
@@ -487,8 +492,9 @@ export default function SharedGigPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           password: storedPassword,
-          fieldName: newFieldName.trim(),
-          fieldType: newFieldType,
+          fieldName,
+          fieldType,
+          dropdownOptions,
         }),
       });
 
@@ -499,11 +505,30 @@ export default function SharedGigPage() {
       }
 
       setCustomFields([...customFields, data.data]);
-      setNewFieldName('');
+      if (!fieldData) {
+        setNewFieldName('');
+        setNewDropdownOptions('');
+      }
     } catch (err) {
       setFieldError(err instanceof Error ? err.message : 'Fehler beim Erstellen');
     } finally {
       setIsAddingField(false);
+    }
+  };
+
+  const handleDeleteCustomField = async (fieldId: string) => {
+    try {
+      const response = await fetch(`/api/gig/${token}/custom-fields?id=${fieldId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: storedPassword }),
+      });
+
+      if (response.ok) {
+        setCustomFields(customFields.filter(f => f.id !== fieldId));
+      }
+    } catch (err) {
+      console.error('Error deleting custom field:', err);
     }
   };
 
@@ -827,6 +852,8 @@ export default function SharedGigPage() {
                     updateSong(selectedSongId, updatedSong);
                   }
                 }}
+                onAddCustomField={handleAddCustomField}
+                onDeleteCustomField={handleDeleteCustomField}
               />
             </div>
           </div>
@@ -860,6 +887,8 @@ export default function SharedGigPage() {
                         updateSong(selectedSongId, updatedSong);
                       }
                     }}
+                    onAddCustomField={handleAddCustomField}
+                    onDeleteCustomField={handleDeleteCustomField}
                   />
                 </div>
               </div>
@@ -935,7 +964,7 @@ export default function SharedGigPage() {
                     <option value="text">Textfeld</option>
                     <option value="textarea">Textbereich</option>
                   </select>
-                  <Button onClick={handleAddCustomField} isLoading={isAddingField} size="sm" className="text-xs">
+                  <Button onClick={() => handleAddCustomField()} isLoading={isAddingField} size="sm" className="text-xs">
                     <Plus className="w-3 h-3 mr-1" />
                     Hinzufuegen
                   </Button>

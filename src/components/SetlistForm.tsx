@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { v4 as uuidv4 } from 'uuid';
-import { Song, CustomField, Setlist, SongType } from '@/types';
+import { Song, CustomField, CustomFieldType, Setlist, SongType } from '@/types';
 import SongListItem from './SongListItem';
 import SongDetailsPanel from './SongDetailsPanel';
 import { Button, Input, Card } from './ui';
@@ -440,20 +440,26 @@ export default function SetlistForm({
     }
   };
 
-  const addCustomField = async () => {
-    if (!newFieldName.trim()) return;
+  const addCustomField = async (fieldData?: { fieldName: string; fieldType: CustomFieldType; dropdownOptions?: string[] }) => {
+    const fieldName = fieldData?.fieldName || newFieldName.trim();
+    const fieldType = fieldData?.fieldType || 'text';
+    const dropdownOptions = fieldData?.dropdownOptions;
+
+    if (!fieldName) return;
 
     try {
       const response = await fetch('/api/custom-fields', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fieldName: newFieldName.trim(), fieldType: 'text' }),
+        body: JSON.stringify({ fieldName, fieldType, dropdownOptions }),
       });
 
       const data = await response.json();
       if (data.data) {
         setCustomFields([...customFields, data.data]);
-        setNewFieldName('');
+        if (!fieldData) {
+          setNewFieldName('');
+        }
       }
     } catch (err) {
       console.error('Error adding custom field:', err);
@@ -716,6 +722,8 @@ export default function SetlistForm({
                 song={selectedSong}
                 customFields={customFields}
                 onChange={(updated) => updateSong(updated.id, updated)}
+                onAddCustomField={addCustomField}
+                onDeleteCustomField={deleteCustomField}
               />
             </div>
           </div>
@@ -745,6 +753,8 @@ export default function SetlistForm({
                     song={selectedSong}
                     customFields={customFields}
                     onChange={(updated) => updateSong(updated.id, updated)}
+                    onAddCustomField={addCustomField}
+                    onDeleteCustomField={deleteCustomField}
                   />
                 </div>
               </div>
@@ -828,7 +838,7 @@ export default function SetlistForm({
                     onKeyDown={(e) => e.key === 'Enter' && addCustomField()}
                     className="text-sm"
                   />
-                  <Button onClick={addCustomField} size="sm">
+                  <Button onClick={() => addCustomField()} size="sm">
                     <Plus className="w-4 h-4" />
                   </Button>
                 </div>

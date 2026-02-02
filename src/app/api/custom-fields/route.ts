@@ -23,6 +23,7 @@ export async function GET() {
         id: f.id,
         fieldName: f.field_name,
         fieldType: f.field_type,
+        dropdownOptions: f.dropdown_options,
         createdAt: f.created_at,
       })),
     });
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { fieldName, fieldType = 'text' } = body;
+    const { fieldName, fieldType = 'text', dropdownOptions } = body;
 
     if (!fieldName) {
       return NextResponse.json(
@@ -54,13 +55,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const field = await createCustomField(session.user.id, fieldName, fieldType);
+    const field = await createCustomField(session.user.id, fieldName, fieldType, dropdownOptions);
 
     return NextResponse.json({
       data: {
         id: field.id,
         fieldName: field.field_name,
         fieldType: field.field_type,
+        dropdownOptions: field.dropdown_options,
         createdAt: field.created_at,
       },
     });

@@ -55,11 +55,14 @@ export interface SetlistMetadata {
   updatedAt: string;
 }
 
+export type CustomFieldType = 'text' | 'textarea' | 'checkbox' | 'dropdown';
+
 export interface CustomField {
   id: string;
   userId: string;
   fieldName: string;
-  fieldType: 'text' | 'textarea' | 'url';
+  fieldType: CustomFieldType;
+  dropdownOptions?: string[]; // Für dropdown-Felder
   createdAt: string;
 }
 
