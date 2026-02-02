@@ -62,6 +62,7 @@ export default function SharedGigPage() {
   const [newFieldType, setNewFieldType] = useState<'text' | 'textarea'>('text');
   const [isAddingField, setIsAddingField] = useState(false);
   const [fieldError, setFieldError] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
 
   const isRemoteUpdateRef = useRef(false);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -624,33 +625,34 @@ export default function SharedGigPage() {
   // Main Editor View - Layout like Admin Panel
   return (
     <div className="h-screen flex flex-col bg-zinc-200 dark:bg-zinc-950">
-      {/* Header */}
+      {/* Header - Compact on mobile */}
       <header className="bg-white dark:bg-zinc-900 border-b border-zinc-300 dark:border-zinc-800">
-        <div className="px-4 py-3">
+        <div className="px-3 sm:px-4 py-2 sm:py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-600 rounded-lg">
-                <Music2 className="w-6 h-6 text-white" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-indigo-600 rounded-lg">
+                <Music2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                  Setlist Prepper
+                <h1 className="text-base sm:text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                  {title || 'Gig'}
                 </h1>
-                <p className="text-sm text-zinc-600 dark:text-zinc-300">
-                  Geteilter Gig · {editorName}
+                <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-300">
+                  {editorName}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              {/* PDF Export Button */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* PDF Export Button - icon only on mobile */}
               {songs.length > 0 && (
                 <Button
                   variant="secondary"
                   size="sm"
                   onClick={() => exportSetlistToPdf({ title, eventDate, startTime, venue, songs })}
+                  className="px-2 sm:px-3"
                 >
-                  <FileDown className="w-4 h-4 mr-1" />
-                  PDF
+                  <FileDown className="w-4 h-4" />
+                  <span className="hidden sm:inline ml-1">PDF</span>
                 </Button>
               )}
               <PresenceIndicator
@@ -667,65 +669,56 @@ export default function SharedGigPage() {
       {/* Two Column Layout like Admin Panel */}
       <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Main Content Area - Songs Panel */}
-        <div className="flex-1 min-w-0 p-4 overflow-hidden flex flex-col">
-          {/* Compact Header with Gig Info */}
-          <div className="flex-shrink-0 mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                {title || 'Unbenannter Gig'}
-              </h2>
-              {/* Save Status Indicator */}
-              {saveStatus === 'saving' && (
-                <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Speichert...
-                </span>
-              )}
-              {saveStatus === 'saved' && (
-                <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded-full">
-                  <Cloud className="w-3 h-3" />
-                  Gespeichert
-                </span>
-              )}
-              {saveStatus === 'error' && !hasConflict && (
-                <span className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
-                  <CloudOff className="w-3 h-3" />
-                  Fehler
-                </span>
-              )}
-              {saveStatus === 'idle' && lastSavedAt && (
-                <span className="text-xs text-zinc-400 dark:text-zinc-500">
-                  Zuletzt gespeichert {lastSavedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-4 text-xs text-zinc-600 dark:text-zinc-300">
-              {eventDate && (
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5" />
-                  {formatEventDate(eventDate)}
-                </span>
-              )}
-              {startTime && (
-                <span className="flex items-center gap-1">
-                  {startTime} Uhr
-                </span>
-              )}
-              {venue && (
-                <span className="flex items-center gap-1">
-                  {venue}
-                </span>
-              )}
-              {songs.length > 0 && (
-                <>
-                  <span className="flex items-center gap-1">
-                    <Music2 className="w-3.5 h-3.5" />
-                    {songs.filter(s => (s.type || 'song') === 'song').length} Songs
+        <div className="flex-1 min-w-0 p-2 sm:p-4 overflow-hidden flex flex-col">
+          {/* Compact Gig Info - Single row on mobile */}
+          <div className="flex-shrink-0 mb-2 sm:mb-4">
+            {/* Save Status + Stats Row */}
+            <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+              <div className="flex items-center gap-2">
+                {/* Save Status - icon only on mobile */}
+                {saveStatus === 'saving' && (
+                  <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span className="hidden sm:inline">Speichert...</span>
                   </span>
-                  <span>Dauer {calculateTotalDuration()}</span>
-                  {startTime && <span>Ende {calculateEndTime()}</span>}
-                </>
-              )}
+                )}
+                {saveStatus === 'saved' && (
+                  <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                    <Cloud className="w-3 h-3" />
+                    <span className="hidden sm:inline">Gespeichert</span>
+                  </span>
+                )}
+                {saveStatus === 'error' && !hasConflict && (
+                  <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                    <CloudOff className="w-3 h-3" />
+                    <span className="hidden sm:inline">Fehler</span>
+                  </span>
+                )}
+                {saveStatus === 'idle' && lastSavedAt && (
+                  <span className="text-zinc-400 dark:text-zinc-500">
+                    <span className="sm:hidden">{lastSavedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className="hidden sm:inline">Zuletzt gespeichert {lastSavedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</span>
+                  </span>
+                )}
+              </div>
+              {/* Stats - compact on mobile */}
+              <div className="flex items-center gap-2 sm:gap-3">
+                {eventDate && (
+                  <span className="hidden sm:flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {formatEventDate(eventDate)}
+                  </span>
+                )}
+                {startTime && (
+                  <span>{startTime}</span>
+                )}
+                <span className="flex items-center gap-1">
+                  <Music2 className="w-3 h-3" />
+                  {songs.filter(s => (s.type || 'song') === 'song').length}
+                </span>
+                <span>{calculateTotalDuration()}</span>
+                {startTime && <span className="hidden sm:inline">→ {calculateEndTime()}</span>}
+              </div>
             </div>
           </div>
 
@@ -760,29 +753,29 @@ export default function SharedGigPage() {
             </div>
           )}
 
-          {/* Add Buttons */}
-          <div className="flex-shrink-0 flex gap-2 mb-4">
-            <Button onClick={addSong} size="sm">
-              <Plus className="w-4 h-4 mr-1" />
-              Song
+          {/* Add Buttons - compact on mobile */}
+          <div className="flex-shrink-0 flex gap-1.5 sm:gap-2 mb-2 sm:mb-4">
+            <Button onClick={addSong} size="sm" className="px-2 sm:px-3">
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline ml-1">Song</span>
             </Button>
-            <Button onClick={addPause} variant="secondary" size="sm">
-              <Coffee className="w-4 h-4 mr-1" />
-              Pause
+            <Button onClick={addPause} variant="secondary" size="sm" className="px-2 sm:px-3">
+              <Coffee className="w-4 h-4" />
+              <span className="hidden sm:inline ml-1">Pause</span>
             </Button>
-            <Button onClick={addEncore} variant="secondary" size="sm">
-              <Star className="w-4 h-4 mr-1" />
-              Zugabe
+            <Button onClick={addEncore} variant="secondary" size="sm" className="px-2 sm:px-3">
+              <Star className="w-4 h-4" />
+              <span className="hidden sm:inline ml-1">Zugabe</span>
             </Button>
           </div>
 
-          {/* Content Area - Two Column Grid like Admin Panel */}
-          <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-0 overflow-hidden">
+          {/* Content Area - Two Column Grid, stacked on mobile */}
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-4 min-h-0 overflow-hidden">
             {/* Song List */}
-            <div className="overflow-y-auto min-h-0">
+            <div className="overflow-y-auto min-h-0 max-h-[40vh] lg:max-h-none">
               {songs.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-zinc-500 dark:text-zinc-400 mb-4">
+                <div className="text-center py-6 sm:py-8">
+                  <p className="text-zinc-500 dark:text-zinc-400 mb-3 sm:mb-4 text-sm">
                     Noch keine Songs
                   </p>
                   <Button onClick={addSong} size="sm">
@@ -800,7 +793,7 @@ export default function SharedGigPage() {
                     items={songs.map((s) => s.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    <div className="space-y-2">
+                    <div className="space-y-1.5 sm:space-y-2">
                       {songs.map((song) => (
                         <SongListItem
                           key={song.id}
@@ -832,85 +825,114 @@ export default function SharedGigPage() {
           </div>
         </div>
 
-        {/* Right Column - Settings / Custom Fields */}
-        <div className="w-full lg:w-72 flex-shrink-0 border-t lg:border-t-0 lg:border-l border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 overflow-y-auto">
-          <div className="flex items-center gap-2 mb-4">
-            <Settings className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
-              Einstellungen
-            </h3>
-          </div>
+        {/* Right Column - Settings / Custom Fields - Collapsible on mobile */}
+        <div className={`w-full lg:w-72 flex-shrink-0 border-t lg:border-t-0 lg:border-l border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-y-auto ${showSettings ? '' : 'lg:block'}`}>
+          {/* Mobile toggle */}
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="lg:hidden w-full flex items-center justify-between p-3 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <Settings className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+                Einstellungen
+              </span>
+              {customFields.length > 0 && (
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                  ({customFields.length} Felder)
+                </span>
+              )}
+            </div>
+            <svg
+              className={`w-4 h-4 text-zinc-500 transition-transform ${showSettings ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
 
-          <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-4">
-            Eigene Felder fuer jeden Song
-          </p>
+          {/* Settings content - always visible on desktop, toggle on mobile */}
+          <div className={`p-4 pt-0 lg:pt-4 ${showSettings ? 'block' : 'hidden lg:block'}`}>
+            <div className="hidden lg:flex items-center gap-2 mb-4">
+              <Settings className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+                Einstellungen
+              </h3>
+            </div>
 
-          {/* Add New Field Section */}
-          <div className="mb-4">
-            <h4 className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-              Neues Feld hinzufuegen
-            </h4>
-            {fieldError && (
-              <div className="mb-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-xs">
-                {fieldError}
-              </div>
-            )}
-            <div className="space-y-2">
-              <Input
-                value={newFieldName}
-                onChange={(e) => setNewFieldName(e.target.value)}
-                placeholder="Feldname eingeben..."
-                onKeyDown={(e) => e.key === 'Enter' && handleAddCustomField()}
-                className="text-sm"
-              />
-              <div className="flex gap-2">
-                <select
-                  value={newFieldType}
-                  onChange={(e) => setNewFieldType(e.target.value as 'text' | 'textarea')}
-                  className="flex-1 px-2 py-1.5 text-xs rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
-                >
-                  <option value="text">Textfeld</option>
-                  <option value="textarea">Textbereich</option>
-                </select>
-                <Button onClick={handleAddCustomField} isLoading={isAddingField} size="sm" className="text-xs">
-                  <Plus className="w-3 h-3 mr-1" />
-                  Hinzufuegen
-                </Button>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-4">
+              Eigene Felder fuer jeden Song
+            </p>
+
+            {/* Add New Field Section */}
+            <div className="mb-4">
+              <h4 className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                Neues Feld hinzufuegen
+              </h4>
+              {fieldError && (
+                <div className="mb-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-xs">
+                  {fieldError}
+                </div>
+              )}
+              <div className="space-y-2">
+                <Input
+                  value={newFieldName}
+                  onChange={(e) => setNewFieldName(e.target.value)}
+                  placeholder="Feldname eingeben..."
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddCustomField()}
+                  className="text-sm"
+                />
+                <div className="flex gap-2">
+                  <select
+                    value={newFieldType}
+                    onChange={(e) => setNewFieldType(e.target.value as 'text' | 'textarea')}
+                    className="flex-1 px-2 py-1.5 text-xs rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
+                  >
+                    <option value="text">Textfeld</option>
+                    <option value="textarea">Textbereich</option>
+                  </select>
+                  <Button onClick={handleAddCustomField} isLoading={isAddingField} size="sm" className="text-xs">
+                    <Plus className="w-3 h-3 mr-1" />
+                    Hinzufuegen
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Existing Fields */}
-          <div className="mb-4">
-            <h4 className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-              Eigene Felder ({customFields.length})
-            </h4>
-            {customFields.length === 0 ? (
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 py-2">
-                Noch keine eigenen Felder erstellt
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {customFields.map((field) => (
-                  <div
-                    key={field.id}
-                    className="p-2 bg-zinc-50 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700"
-                  >
-                    <span className="font-medium text-sm text-zinc-900 dark:text-zinc-100 truncate block">
-                      {field.fieldName}
-                    </span>
-                    <span className="text-xs text-zinc-600 dark:text-zinc-400">
-                      {field.fieldType === 'textarea' ? 'Textbereich' : 'Textfeld'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+            {/* Existing Fields */}
+            <div className="mb-4">
+              <h4 className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                Eigene Felder ({customFields.length})
+              </h4>
+              {customFields.length === 0 ? (
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 py-2">
+                  Noch keine eigenen Felder erstellt
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {customFields.map((field) => (
+                    <div
+                      key={field.id}
+                      className="p-2 bg-zinc-50 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700"
+                    >
+                      <span className="font-medium text-sm text-zinc-900 dark:text-zinc-100 truncate block">
+                        {field.fieldName}
+                      </span>
+                      <span className="text-xs text-zinc-600 dark:text-zinc-400">
+                        {field.fieldType === 'textarea' ? 'Textbereich' : 'Textfeld'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-          <p className="text-xs text-zinc-400 dark:text-zinc-500 border-t border-zinc-200 dark:border-zinc-700 pt-3">
-            Felder werden mit dem Admin synchronisiert.
-          </p>
+            <p className="text-xs text-zinc-400 dark:text-zinc-500 border-t border-zinc-200 dark:border-zinc-700 pt-3">
+              Felder werden mit dem Admin synchronisiert.
+            </p>
+          </div>
         </div>
       </main>
     </div>
