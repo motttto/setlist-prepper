@@ -34,7 +34,9 @@ export default function GigEditDialog({
       setStartTime(initialData.startTime);
       setVenue(initialData.venue);
     }
-  }, [isOpen, initialData]);
+    // Only re-run when isOpen changes to true, not when initialData object reference changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const handleSave = () => {
     onSave({ title, eventDate, startTime, venue });
