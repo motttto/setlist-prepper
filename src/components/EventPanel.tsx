@@ -299,11 +299,12 @@ export default function EventPanel({
       for (const act of stage.acts) {
         let activePos = 0;
         for (const song of act.songs) {
-          if (!song.muted && song.type === 'song') {
+          const songType = song.type || 'song';
+          if (!song.muted && songType === 'song') {
             activePos++;
           }
           if (song.id === selectedSongId) {
-            const displayPos = (!song.muted && song.type === 'song') ? activePos : undefined;
+            const displayPos = (!song.muted && songType === 'song') ? activePos : undefined;
             return { song, displayPosition: displayPos };
           }
         }

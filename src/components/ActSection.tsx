@@ -192,7 +192,7 @@ export default function ActSection({
   };
 
   // Count active songs
-  const activeSongCount = songs.filter((s) => s.type === 'song' && !s.muted).length;
+  const activeSongCount = songs.filter((s) => (s.type || 'song') === 'song' && !s.muted).length;
 
   // Calculate total duration
   const totalDuration = songs.reduce((acc, song) => {
@@ -319,10 +319,11 @@ export default function ActSection({
                   {(() => {
                     let activePosition = 0;
                     return songs.map((song) => {
-                      if (!song.muted && song.type === 'song') {
+                      const songType = song.type || 'song';
+                      if (!song.muted && songType === 'song') {
                         activePosition++;
                       }
-                      const displayPos = (!song.muted && song.type === 'song') ? activePosition : undefined;
+                      const displayPos = (!song.muted && songType === 'song') ? activePosition : undefined;
                       return (
                         <SongListItem
                           key={song.id}
