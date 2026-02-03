@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Button, Input } from './ui';
 
@@ -26,37 +27,67 @@ export default function GigEditDialog({
   const [eventDate, setEventDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [venue, setVenue] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  // Ensure we're mounted before using portal
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
-      setTitle(initialData.title);
-      setEventDate(initialData.eventDate);
-      setStartTime(initialData.startTime);
-      setVenue(initialData.venue);
+      setTitle(initialData.title || '');
+      setEventDate(initialData.eventDate || '');
+      setStartTime(initialData.startTime || '');
+      setVenue(initialData.venue || '');
     }
-    // Only re-run when isOpen changes to true, not when initialData object reference changes
+    // Only re-run when isOpen changes to true
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  const handleSave = () => {
+  const handleClose = useCallback(() => {
+    console.log('[GigEditDialog] handleClose called');
+    onClose();
+  }, [onClose]);
+
+  const handleSave = useCallback(() => {
+    console.log('[GigEditDialog] handleSave called');
     onSave({ title, eventDate, startTime, venue });
     onClose();
-  };
+  }, [title, eventDate, startTime, venue, onSave, onClose]);
 
-  if (!isOpen) return null;
+  const handleBackdropClick = useCallback((e: React.MouseEvent) => {
+    console.log('[GigEditDialog] backdrop clicked');
+    e.preventDefault();
+    e.stopPropagation();
+    handleClose();
+  }, [handleClose]);
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+  const handleDialogClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+  }, []);
+
+  // Don't render anything if not open or not mounted
+  if (!isOpen || !mounted) return null;
+
+  const dialogContent = (
+    <div
+      className="fixed inset-0 flex items-center justify-center"
+      style={{ zIndex: 99999 }}
+    >
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50"
-        onClick={onClose}
+        onClick={handleBackdropClick}
+        onMouseDown={handleBackdropClick}
       />
 
       {/* Dialog */}
       <div
         className="relative bg-white dark:bg-zinc-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6"
-        onClick={(e) => e.stopPropagation()}
+        onClick={handleDialogClick}
+        onMouseDown={handleDialogClick}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -65,7 +96,12 @@ export default function GigEditDialog({
           </h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('[GigEditDialog] X button clicked');
+              handleClose();
+            }}
             className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -107,14 +143,35 @@ export default function GigEditDialog({
 
         {/* Actions */}
         <div className="flex justify-end gap-3 mt-6">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('[GigEditDialog] Abbrechen clicked');
+              handleClose();
+            }}
+            className="px-4 py-2 text-base font-medium rounded-lg bg-zinc-200 text-zinc-900 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600 transition-colors"
+          >
             Abbrechen
-          </Button>
-          <Button type="button" onClick={handleSave}>
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('[GigEditDialog] Speichern clicked');
+              handleSave();
+            }}
+            className="px-4 py-2 text-base font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+          >
             Speichern
-          </Button>
+          </button>
         </div>
       </div>
     </div>
   );
+
+  // Use portal to render outside React tree
+  return createPortal(dialogContent, document.body);
 }
