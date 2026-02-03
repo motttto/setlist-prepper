@@ -42,7 +42,7 @@ function flattenStagesToSongs(stages: StageData[]): SongData[] {
     // Ensure acts is an array
     const acts = stage.acts || [];
     for (const act of acts) {
-      // Add act marker as a special song entry
+      // Add act marker as a special song entry (include all Song fields)
       songs.push({
         id: act.id,
         position: position++,
@@ -50,6 +50,16 @@ function flattenStagesToSongs(stages: StageData[]): SongData[] {
         title: act.name,
         actType: act.type,
         duration: '',
+        lyrics: '',
+        visualDescription: '',
+        timingBpm: '',
+        transitionTypes: [],
+        transitions: '',
+        lighting: '',
+        mediaLinks: [],
+        stageDirections: '',
+        audioCues: '',
+        customFields: {},
       });
 
       // Add all songs from this act - ensure songs is an array
@@ -72,7 +82,8 @@ function mergeActIntoStages(originalStages: StageData[], updatedStages: StageDat
   // Find the updated act in the updated stages
   let updatedAct: ActData | null = null;
   for (const stage of updatedStages) {
-    const act = stage.acts.find(a => a.id === actId);
+    const acts = stage.acts || [];
+    const act = acts.find(a => a.id === actId);
     if (act) {
       updatedAct = act;
       break;
@@ -87,7 +98,7 @@ function mergeActIntoStages(originalStages: StageData[], updatedStages: StageDat
   // Merge the updated act into the original stages
   return originalStages.map(stage => ({
     ...stage,
-    acts: stage.acts.map(act => {
+    acts: (stage.acts || []).map(act => {
       if (act.id === actId) {
         return updatedAct!;
       }
@@ -118,13 +129,13 @@ function rebuildStagesFromSongs(originalStages: StageData[], flatSongs: SongData
   // Rebuild stages with updated data
   return originalStages.map(stage => ({
     ...stage,
-    acts: stage.acts.map(act => {
+    acts: (stage.acts || []).map(act => {
       const actUpdate = actUpdates.get(act.id);
       return {
         ...act,
         name: actUpdate?.name ?? act.name,
         type: actUpdate?.type ?? act.type,
-        songs: act.songs.map(song => {
+        songs: (act.songs || []).map(song => {
           const update = songUpdates.get(song.id);
           if (update) {
             // Remove act-specific fields that shouldn't be on songs
@@ -188,7 +199,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           if (sharedActId) {
             parsedStages = parsedStages.map(stage => ({
               ...stage,
-              acts: stage.acts.filter(act => {
+              acts: (stage.acts || []).filter(act => {
                 if (act.id === sharedActId) {
                   sharedActName = act.name;
                   return true;

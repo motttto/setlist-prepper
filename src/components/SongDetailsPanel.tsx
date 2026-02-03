@@ -50,11 +50,13 @@ export default function SongDetailsPanel({
     });
   };
 
+  const mediaLinks = song.mediaLinks || [];
+
   const addMediaLink = () => {
     if (newMediaLink.trim()) {
       onChange({
         ...song,
-        mediaLinks: [...song.mediaLinks, newMediaLink.trim()],
+        mediaLinks: [...mediaLinks, newMediaLink.trim()],
       });
       setNewMediaLink('');
     }
@@ -63,7 +65,7 @@ export default function SongDetailsPanel({
   const removeMediaLink = (index: number) => {
     onChange({
       ...song,
-      mediaLinks: song.mediaLinks.filter((_, i) => i !== index),
+      mediaLinks: mediaLinks.filter((_, i) => i !== index),
     });
   };
 
@@ -185,12 +187,12 @@ export default function SongDetailsPanel({
                 Links (Website, Social Media, etc.)
               </label>
               <div className="space-y-2">
-                {song.mediaLinks.map((link, index) => (
+                {mediaLinks.map((link, index) => (
                   <div key={index} className="flex items-center gap-2">
                     <Input
                       value={link}
                       onChange={(e) => {
-                        const newLinks = [...song.mediaLinks];
+                        const newLinks = [...mediaLinks];
                         newLinks[index] = e.target.value;
                         handleChange('mediaLinks', newLinks);
                       }}
@@ -347,12 +349,12 @@ export default function SongDetailsPanel({
                 Medien-Links
               </label>
               <div className="space-y-2">
-                {song.mediaLinks.map((link, index) => (
+                {mediaLinks.map((link, index) => (
                   <div key={index} className="flex items-center gap-2">
                     <Input
                       value={link}
                       onChange={(e) => {
-                        const newLinks = [...song.mediaLinks];
+                        const newLinks = [...mediaLinks];
                         newLinks[index] = e.target.value;
                         handleChange('mediaLinks', newLinks);
                       }}
