@@ -184,9 +184,11 @@ export default function EventPanel({
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges, saveStatus]);
 
-  // Open edit dialog when triggered from outside
+  // Open edit dialog when triggered from outside - track last processed trigger
+  const lastProcessedTriggerRef = useRef(0);
   useEffect(() => {
-    if (openEditDialogTrigger && openEditDialogTrigger > 0 && event) {
+    if (openEditDialogTrigger && openEditDialogTrigger > lastProcessedTriggerRef.current && event) {
+      lastProcessedTriggerRef.current = openEditDialogTrigger;
       setIsEditDialogOpen(true);
     }
   }, [openEditDialogTrigger, event]);
