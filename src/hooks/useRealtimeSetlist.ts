@@ -37,6 +37,10 @@ export function useRealtimeSetlist({
     currentField: null,
   });
 
+  // Store callback in ref to avoid re-subscribing when it changes
+  const onRemoteOperationRef = useRef(onRemoteOperation);
+  onRemoteOperationRef.current = onRemoteOperation;
+
   useEffect(() => {
     if (!enabled || !setlistId) return;
 
@@ -86,13 +90,13 @@ export function useRealtimeSetlist({
       console.log('[Realtime] User left:', leftPresences);
     });
 
-    // Operation Broadcast Handler
+    // Operation Broadcast Handler - use ref to avoid dependency issues
     channel.on('broadcast', { event: 'operation' }, ({ payload }) => {
       const operation = payload as SetlistOperation;
       // Ignoriere eigene Operations
       if (operation.userId !== editorId) {
         console.log('[Realtime] Remote operation:', operation);
-        onRemoteOperation(operation);
+        onRemoteOperationRef.current(operation);
       }
     });
 
@@ -129,7 +133,7 @@ export function useRealtimeSetlist({
       channel.unsubscribe();
       setIsConnected(false);
     };
-  }, [setlistId, editorId, editorName, enabled, onRemoteOperation]);
+  }, [setlistId, editorId, editorName, enabled]); // Removed onRemoteOperation - using ref instead
 
   // Operation broadcasten
   const broadcastOperation = useCallback(

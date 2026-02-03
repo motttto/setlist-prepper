@@ -82,6 +82,7 @@ export default function SharedGigPage() {
     switch (operation.type) {
       case 'ADD_SONG':
         setSongs(prev => {
+          if (!Array.isArray(prev)) return [operation.song];
           const newSongs = [...prev];
           newSongs.splice(operation.position, 0, operation.song);
           return newSongs.map((s, i) => ({ ...s, position: i + 1 }));
@@ -90,32 +91,35 @@ export default function SharedGigPage() {
 
       case 'DELETE_SONG':
         setSongs(prev => {
+          if (!Array.isArray(prev)) return [];
           const filtered = prev.filter(s => s.id !== operation.songId);
           return filtered.map((s, i) => ({ ...s, position: i + 1 }));
         });
-        if (selectedSongId === operation.songId) {
-          setSelectedSongId(null);
-        }
+        setSelectedSongId(current => current === operation.songId ? null : current);
         break;
 
       case 'UPDATE_SONG':
-        setSongs(prev => prev.map(s => {
-          if (s.id !== operation.songId) return s;
+        setSongs(prev => {
+          if (!Array.isArray(prev)) return [];
+          return prev.map(s => {
+            if (s.id !== operation.songId) return s;
 
-          if (typeof operation.field === 'string' && operation.field.startsWith('customFields.')) {
-            const fieldKey = operation.field.replace('customFields.', '');
-            return {
-              ...s,
-              customFields: { ...s.customFields, [fieldKey]: operation.value as string }
-            };
-          }
+            if (typeof operation.field === 'string' && operation.field.startsWith('customFields.')) {
+              const fieldKey = operation.field.replace('customFields.', '');
+              return {
+                ...s,
+                customFields: { ...s.customFields, [fieldKey]: operation.value as string }
+              };
+            }
 
-          return { ...s, [operation.field]: operation.value };
-        }));
+            return { ...s, [operation.field]: operation.value };
+          });
+        });
         break;
 
       case 'REORDER_SONGS':
         setSongs(prev => {
+          if (!Array.isArray(prev)) return [];
           const songMap = new Map(prev.map(s => [s.id, s]));
           return operation.songIds
             .map((id, i) => {
@@ -147,7 +151,7 @@ export default function SharedGigPage() {
     setTimeout(() => {
       isRemoteUpdateRef.current = false;
     }, 0);
-  }, [selectedSongId]);
+  }, []); // Removed selectedSongId dependency - use functional update for setSelectedSongId
 
   const { presenceUsers, isConnected, broadcastOperation, updatePresence } = useRealtimeSetlist({
     setlistId: `shared:${token}`,
