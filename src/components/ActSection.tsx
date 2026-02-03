@@ -73,6 +73,8 @@ export default function ActSection({
   readonly = false,
   onShare,
 }: ActSectionProps) {
+  // Ensure songs is always an array to prevent undefined errors
+  const songs = act.songs || [];
   const [isCollapsed, setIsCollapsed] = useState(act.isCollapsed ?? false);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(act.name);
@@ -119,34 +121,34 @@ export default function ActSection({
   );
 
   const addSong = (type: SongType = 'song') => {
-    const newSong = createEmptySong(act.songs.length + 1, type);
-    onUpdate({ ...act, songs: [...act.songs, newSong] });
+    const newSong = createEmptySong(songs.length + 1, type);
+    onUpdate({ ...act, songs: [...songs, newSong] });
     onSelectSong(newSong.id);
     // Expand if collapsed
     if (isCollapsed) {
       setIsCollapsed(false);
-      onUpdate({ ...act, songs: [...act.songs, newSong], isCollapsed: false });
+      onUpdate({ ...act, songs: [...songs, newSong], isCollapsed: false });
     }
   };
 
   const updateSong = (songId: string, updatedSong: Song) => {
     onUpdate({
       ...act,
-      songs: act.songs.map((s) => (s.id === songId ? updatedSong : s)),
+      songs: songs.map((s) => (s.id === songId ? updatedSong : s)),
     });
   };
 
   const deleteSong = (songId: string) => {
-    const newSongs = act.songs.filter((s) => s.id !== songId);
+    const newSongs = songs.filter((s) => s.id !== songId);
     const updatedSongs = newSongs.map((song, i) => ({ ...song, position: i + 1 }));
     onUpdate({ ...act, songs: updatedSongs });
   };
 
   const duplicateSong = (songId: string) => {
-    const songToDuplicate = act.songs.find((s) => s.id === songId);
+    const songToDuplicate = songs.find((s) => s.id === songId);
     if (!songToDuplicate) return;
 
-    const songIndex = act.songs.findIndex((s) => s.id === songId);
+    const songIndex = songs.findIndex((s) => s.id === songId);
     const duplicatedSong: Song = {
       ...songToDuplicate,
       id: uuidv4(),
@@ -154,9 +156,9 @@ export default function ActSection({
     };
 
     const newSongs = [
-      ...act.songs.slice(0, songIndex + 1),
+      ...songs.slice(0, songIndex + 1),
       duplicatedSong,
-      ...act.songs.slice(songIndex + 1),
+      ...songs.slice(songIndex + 1),
     ];
     const updatedSongs = newSongs.map((song, i) => ({ ...song, position: i + 1 }));
     onUpdate({ ...act, songs: updatedSongs });
@@ -166,7 +168,7 @@ export default function ActSection({
   const toggleMute = (songId: string) => {
     onUpdate({
       ...act,
-      songs: act.songs.map((s) => (s.id === songId ? { ...s, muted: !s.muted } : s)),
+      songs: songs.map((s) => (s.id === songId ? { ...s, muted: !s.muted } : s)),
     });
   };
 
@@ -174,26 +176,26 @@ export default function ActSection({
     const duration = `${minutes || '0'}:${seconds || '00'}`;
     onUpdate({
       ...act,
-      songs: act.songs.map((s) => (s.id === songId ? { ...s, duration } : s)),
+      songs: songs.map((s) => (s.id === songId ? { ...s, duration } : s)),
     });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      const oldIndex = act.songs.findIndex((item) => item.id === active.id);
-      const newIndex = act.songs.findIndex((item) => item.id === over.id);
-      const newSongs = arrayMove(act.songs, oldIndex, newIndex);
+      const oldIndex = songs.findIndex((item) => item.id === active.id);
+      const newIndex = songs.findIndex((item) => item.id === over.id);
+      const newSongs = arrayMove(songs, oldIndex, newIndex);
       const updatedSongs = newSongs.map((song, i) => ({ ...song, position: i + 1 }));
       onUpdate({ ...act, songs: updatedSongs });
     }
   };
 
   // Count active songs
-  const activeSongCount = act.songs.filter((s) => s.type === 'song' && !s.muted).length;
+  const activeSongCount = songs.filter((s) => s.type === 'song' && !s.muted).length;
 
   // Calculate total duration
-  const totalDuration = act.songs.reduce((acc, song) => {
+  const totalDuration = songs.reduce((acc, song) => {
     if (song.muted) return acc;
     if (!song.duration) return acc;
     const parts = song.duration.split(':');
@@ -299,7 +301,7 @@ export default function ActSection({
       {/* Songs List */}
       {!isCollapsed && (
         <div className="p-2">
-          {act.songs.length === 0 ? (
+          {songs.length === 0 ? (
             <div className="text-center py-4 text-zinc-400 dark:text-zinc-500 text-sm">
               Noch keine Songs
             </div>
@@ -310,13 +312,13 @@ export default function ActSection({
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={act.songs.map((s) => s.id)}
+                items={songs.map((s) => s.id)}
                 strategy={verticalListSortingStrategy}
               >
                 <div className="space-y-1.5">
                   {(() => {
                     let activePosition = 0;
-                    return act.songs.map((song) => {
+                    return songs.map((song) => {
                       if (!song.muted && song.type === 'song') {
                         activePosition++;
                       }

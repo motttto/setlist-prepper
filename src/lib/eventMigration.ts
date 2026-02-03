@@ -7,7 +7,16 @@ import { Event, Stage, Act, Song, LegacySetlist, ActType } from '@/types';
 export function migrateToEventStructure(data: LegacySetlist | Event): Event {
   // Prüfe ob bereits neue Struktur (hat stages Array)
   if ('stages' in data && Array.isArray(data.stages) && data.stages.length > 0) {
-    return data as Event;
+    // Ensure all acts have a songs array (defensive check for corrupted data)
+    const eventData = data as Event;
+    const sanitizedStages = eventData.stages.map(stage => ({
+      ...stage,
+      acts: (stage.acts || []).map(act => ({
+        ...act,
+        songs: act.songs || []
+      }))
+    }));
+    return { ...eventData, stages: sanitizedStages };
   }
 
   // Alte Struktur: songs Array direkt im Setlist

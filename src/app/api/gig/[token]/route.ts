@@ -39,7 +39,9 @@ function flattenStagesToSongs(stages: StageData[]): SongData[] {
   let position = 1;
 
   for (const stage of stages) {
-    for (const act of stage.acts) {
+    // Ensure acts is an array
+    const acts = stage.acts || [];
+    for (const act of acts) {
       // Add act marker as a special song entry
       songs.push({
         id: act.id,
@@ -50,8 +52,9 @@ function flattenStagesToSongs(stages: StageData[]): SongData[] {
         duration: '',
       });
 
-      // Add all songs from this act
-      for (const song of act.songs) {
+      // Add all songs from this act - ensure songs is an array
+      const actSongs = act.songs || [];
+      for (const song of actSongs) {
         songs.push({
           ...song,
           position: position++,
