@@ -68,6 +68,8 @@ export default function SharedGigPage() {
   // Act-share mode
   const [isActShare, setIsActShare] = useState(false);
   const [sharedActName, setSharedActName] = useState<string | null>(null);
+  // Role: 'band' = can only edit songs, 'orga' = can edit everything
+  const [shareRole, setShareRole] = useState<'band' | 'orga'>('band');
 
   const isRemoteUpdateRef = useRef(false);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -202,6 +204,8 @@ export default function SharedGigPage() {
       // Act-share mode info
       setIsActShare(data.data.isActShare || false);
       setSharedActName(data.data.sharedActName || null);
+      // Role info
+      setShareRole(data.data.shareRole || 'band');
       setIsAuthenticated(true);
       setShowNamePrompt(true);
       // Allow changes to trigger auto-save after initial load
@@ -543,6 +547,7 @@ export default function SharedGigPage() {
         setSongs(Array.isArray(data.data.songs) ? data.data.songs : []);
         setUpdatedAt(data.data.updatedAt || '');
         setLastEditedBy(data.data.lastEditedBy || '');
+        setShareRole(data.data.shareRole || 'band');
         setSelectedSongId(null);
       }
     } catch (err) {
@@ -751,9 +756,19 @@ export default function SharedGigPage() {
                 <Music2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-base sm:text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                  {isActShare && sharedActName ? sharedActName : (title || 'Gig')}
-                </h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-base sm:text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                    {isActShare && sharedActName ? sharedActName : (title || 'Gig')}
+                  </h1>
+                  {/* Role badge */}
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${
+                    shareRole === 'orga'
+                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                      : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
+                  }`}>
+                    {shareRole === 'orga' ? 'Orga' : 'Band'}
+                  </span>
+                </div>
                 {isActShare && (
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
                     {title}
@@ -856,9 +871,10 @@ export default function SharedGigPage() {
             </div>
           )}
 
-          {/* Add Buttons - compact on mobile, hide act buttons for act-shares */}
+          {/* Add Buttons - compact on mobile, hide act buttons for act-shares and band role */}
           <div className="flex-shrink-0 flex flex-wrap gap-1.5 sm:gap-2 mb-2 sm:mb-4">
-            {!isActShare && (
+            {/* Only orga role can add acts, and not in act-share mode */}
+            {!isActShare && shareRole === 'orga' && (
               <>
                 <Button onClick={() => addAct('band')} variant="secondary" size="sm" className="px-2 sm:px-3 bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/30 dark:hover:bg-cyan-900/50 border-cyan-300 dark:border-cyan-700">
                   <Users className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />

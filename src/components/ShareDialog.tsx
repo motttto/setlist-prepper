@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Button, Input, Card, ConfirmModal } from './ui';
-import { Share2, Copy, Check, X, Link2, Loader2, Users } from 'lucide-react';
+import { Share2, Copy, Check, X, Link2, Loader2, Users, Shield } from 'lucide-react';
 import { Stage, Act } from '@/types';
 
 interface ShareDialogProps {
@@ -31,8 +31,10 @@ export default function ShareDialog({
   const [copied, setCopied] = useState(false);
   const [showDisableConfirm, setShowDisableConfirm] = useState(false);
   const [selectedActId, setSelectedActId] = useState<string>(preselectedActId || '');
+  const [selectedRole, setSelectedRole] = useState<'band' | 'orga'>('band');
   const [sharedActId, setSharedActId] = useState<string | null>(null);
   const [sharedActName, setSharedActName] = useState<string | null>(null);
+  const [sharedRole, setSharedRole] = useState<'band' | 'orga'>('band');
 
   // Flatten all acts from all stages for the dropdown
   const allActs: Act[] = stages.flatMap(stage => stage.acts || []);
@@ -60,6 +62,7 @@ export default function ShareDialog({
         setShareUrl(data.data.shareUrl || '');
         setSharedActId(data.data.sharedActId || null);
         setSharedActName(data.data.sharedActName || null);
+        setSharedRole(data.data.shareRole || 'band');
       }
     } catch (err) {
       console.error('Error loading share status:', err);
@@ -84,6 +87,7 @@ export default function ShareDialog({
         body: JSON.stringify({
           password,
           actId: selectedActId || null,  // null = full event
+          role: selectedRole,  // 'band' or 'orga'
         }),
       });
 
@@ -96,6 +100,7 @@ export default function ShareDialog({
       setIsShared(true);
       setShareUrl(data.data.shareUrl);
       setSharedActId(data.data.sharedActId || null);
+      setSharedRole(data.data.shareRole || 'band');
       // Get act name from local data
       if (selectedActId) {
         const act = allActs.find(a => a.id === selectedActId);
@@ -105,6 +110,7 @@ export default function ShareDialog({
       }
       setPassword('');
       setSelectedActId('');
+      setSelectedRole('band');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fehler beim Aktivieren');
     } finally {
@@ -131,6 +137,7 @@ export default function ShareDialog({
       setShareUrl('');
       setSharedActId(null);
       setSharedActName(null);
+      setSharedRole('band');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fehler beim Deaktivieren');
     } finally {
@@ -185,10 +192,9 @@ export default function ShareDialog({
                 <Users className="w-4 h-4" />
                 {sharedActId ? `"${sharedActName}" wird geteilt` : 'Ganzes Event wird geteilt'}
               </p>
-              <p className="text-xs text-green-600 dark:text-green-400">
-                {sharedActId
-                  ? 'Der Act kann mit dem Link und Passwort bearbeitet werden'
-                  : 'Das gesamte Event kann mit dem Link und Passwort bearbeitet werden'}
+              <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                <Shield className="w-3 h-3" />
+                Rolle: {sharedRole === 'orga' ? 'Orga (kann alles bearbeiten)' : 'Band (nur Songs & Visuals)'}
               </p>
             </div>
 
@@ -282,6 +288,51 @@ export default function ShareDialog({
                 </p>
               </div>
             )}
+
+            {/* Role Selection */}
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Berechtigungen
+              </label>
+              <div className="space-y-2">
+                <label className="flex items-start gap-3 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg cursor-pointer border-2 transition-colors hover:border-indigo-300 dark:hover:border-indigo-700"
+                  style={{ borderColor: selectedRole === 'band' ? 'rgb(99 102 241)' : 'transparent' }}
+                >
+                  <input
+                    type="radio"
+                    name="role"
+                    value="band"
+                    checked={selectedRole === 'band'}
+                    onChange={() => setSelectedRole('band')}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Band</p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      Kann Songs bearbeiten & Visual-Abfragen ausfüllen. Keine Event-Details.
+                    </p>
+                  </div>
+                </label>
+                <label className="flex items-start gap-3 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg cursor-pointer border-2 transition-colors hover:border-indigo-300 dark:hover:border-indigo-700"
+                  style={{ borderColor: selectedRole === 'orga' ? 'rgb(99 102 241)' : 'transparent' }}
+                >
+                  <input
+                    type="radio"
+                    name="role"
+                    value="orga"
+                    checked={selectedRole === 'orga'}
+                    onChange={() => setSelectedRole('orga')}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Orga</p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      Kann alles bearbeiten inkl. Titel, Datum, Venue und Startzeit.
+                    </p>
+                  </div>
+                </label>
+              </div>
+            </div>
 
             <Input
               label="Passwort für den Share-Link"

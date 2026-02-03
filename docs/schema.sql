@@ -26,6 +26,7 @@ CREATE TABLE setlists (
   share_password_hash TEXT,
   is_shared BOOLEAN DEFAULT false,
   shared_act_id TEXT DEFAULT NULL,  -- NULL = full event, Act-ID = only that act
+  share_role TEXT DEFAULT 'band',  -- 'band' = can edit songs only, 'orga' = can edit everything
   last_edited_by TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -111,3 +112,6 @@ CREATE POLICY "Users can manage own custom fields"
 
 -- Migration: Add shared_act_id column (run this in Supabase SQL Editor)
 -- ALTER TABLE setlists ADD COLUMN IF NOT EXISTS shared_act_id TEXT DEFAULT NULL;
+
+-- Migration: Add share_role column (run this in Supabase SQL Editor)
+-- ALTER TABLE setlists ADD COLUMN IF NOT EXISTS share_role TEXT DEFAULT 'band';

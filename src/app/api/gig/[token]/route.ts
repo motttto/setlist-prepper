@@ -247,6 +247,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         isActShare: !!sharedActId,
         sharedActId,
         sharedActName,
+        // Role info: 'band' = can only edit songs, 'orga' = can edit everything
+        shareRole: setlist.share_role || 'band',
       },
     });
   } catch (error) {
@@ -272,7 +274,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     // Gig mit Token finden (including encrypted_data to check format)
     const { data: setlist, error: fetchError } = await supabase
       .from('setlists')
-      .select('id, share_password_hash, updated_at, encrypted_data, shared_act_id')
+      .select('id, share_password_hash, updated_at, encrypted_data, shared_act_id, share_role')
       .eq('share_token', token)
       .eq('is_shared', true)
       .single();
@@ -298,6 +300,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         { status: 409 }
       );
     }
+
+    // Check role - band can only edit songs, orga can edit everything
+    const shareRole = setlist.share_role || 'band';
 
     // Determine if the original data is in new format (stages)
     let isNewFormat = false;
@@ -342,18 +347,25 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
     const newUpdatedAt = new Date().toISOString();
 
+    // Build update object - band role can only update songs, orga can update everything
+    const updateData: Record<string, unknown> = {
+      encrypted_data: dataToStore,
+      updated_at: newUpdatedAt,
+      last_edited_by: editorName || 'Geteilt',
+    };
+
+    // Only orga role can update event details
+    if (shareRole === 'orga') {
+      updateData.title = title;
+      updateData.event_date = eventDate || null;
+      updateData.start_time = startTime || null;
+      updateData.venue = venue || null;
+    }
+
     // Update
     const { data: updatedSetlist, error: updateError } = await supabase
       .from('setlists')
-      .update({
-        title,
-        event_date: eventDate || null,
-        start_time: startTime || null,
-        venue: venue || null,
-        encrypted_data: dataToStore,
-        updated_at: newUpdatedAt,
-        last_edited_by: editorName || 'Geteilt',
-      })
+      .update(updateData)
       .eq('id', setlist.id)
       .select('updated_at, last_edited_by')
       .single();

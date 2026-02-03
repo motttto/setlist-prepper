@@ -29,7 +29,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const { id } = await params;
     const body = await request.json();
-    const { password, actId } = body;  // actId is optional - null means full event
+    const { password, actId, role } = body;  // actId optional, role = 'band' | 'orga'
 
     if (!password || password.length < 4) {
       return NextResponse.json(
@@ -54,6 +54,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const shareToken = existingSetlist.share_token || generateShareToken();
     const passwordHash = hashPassword(password);
 
+    // Validate role
+    const shareRole = role === 'orga' ? 'orga' : 'band';  // default to 'band'
+
     // Update mit Share-Daten
     const { error: updateError } = await supabase
       .from('setlists')
@@ -62,6 +65,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         share_password_hash: passwordHash,
         is_shared: true,
         shared_act_id: actId || null,  // null = full event, actId = specific act
+        share_role: shareRole,  // 'band' = songs only, 'orga' = everything
       })
       .eq('id', id)
       .eq('user_id', session.user.id);
@@ -85,6 +89,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         shareToken,
         isShared: true,
         sharedActId: actId || null,
+        shareRole,
       },
     });
   } catch (error) {
@@ -114,6 +119,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         share_password_hash: null,
         is_shared: false,
         shared_act_id: null,
+        share_role: 'band',  // Reset to default
       })
       .eq('id', id)
       .eq('user_id', session.user.id);
@@ -149,7 +155,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const { data, error } = await supabase
       .from('setlists')
-      .select('share_token, is_shared, shared_act_id, encrypted_data')
+      .select('share_token, is_shared, shared_act_id, share_role, encrypted_data')
       .eq('id', id)
       .eq('user_id', session.user.id)
       .single();
@@ -190,6 +196,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         shareUrl,
         sharedActId: data.shared_act_id || null,
         sharedActName,
+        shareRole: data.share_role || 'band',
       },
     });
   } catch (error) {
