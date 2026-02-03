@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import { Modal, Button, Input } from './ui';
 import { ActType } from '@/types';
-import { Plus, Trash2, Users, Disc3, Music, Star, Sparkles, ChevronRight, ChevronLeft, Check, Minus } from 'lucide-react';
+import { Plus, Users, Disc3, Music, Star, Sparkles, ChevronRight, ChevronLeft, Check, Minus, Mic2, Calendar, Building } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+
+type EventType = 'single-band' | 'multi-band' | 'festival';
 
 interface StageData {
   id: string;
@@ -40,35 +42,64 @@ const ACT_TYPE_OPTIONS: { value: ActType; label: string; icon: React.ReactNode }
   { value: 'other', label: 'Andere', icon: <Music className="w-4 h-4" /> },
 ];
 
+const EVENT_TYPES: { value: EventType; label: string; description: string; icon: React.ReactNode }[] = [
+  {
+    value: 'single-band',
+    label: 'Konzert / Einzelact',
+    description: 'Ein Auftritt mit einer Band, DJ oder Solokünstler',
+    icon: <Mic2 className="w-8 h-8" />,
+  },
+  {
+    value: 'multi-band',
+    label: 'Mehrere Acts',
+    description: 'Ein Abend mit mehreren Bands, DJs oder Acts',
+    icon: <Users className="w-8 h-8" />,
+  },
+  {
+    value: 'festival',
+    label: 'Festival / Mehrtägig',
+    description: 'Mehrere Stages, viele Acts, ggf. mehrere Tage',
+    icon: <Calendar className="w-8 h-8" />,
+  },
+];
+
 export default function NewEventWizard({ isOpen, onClose, onComplete }: NewEventWizardProps) {
   const [step, setStep] = useState(0);
 
-  // Step 0: Event Basics
+  // Step 0: Event Type
+  const [eventType, setEventType] = useState<EventType | null>(null);
+
+  // Step 1: Event Basics
   const [title, setTitle] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [venue, setVenue] = useState('');
 
-  // Step 1: Stage Count
-  const [stageCount, setStageCount] = useState(1);
+  // For single-band: Act type
+  const [singleActType, setSingleActType] = useState<ActType>('band');
 
-  // Step 2: Acts per Stage (array of counts)
-  const [actsPerStage, setActsPerStage] = useState<number[]>([1]);
+  // For multi-band: Act count
+  const [actCount, setActCount] = useState(2);
 
-  // Step 3: Stage & Act Names
+  // For festival: Stage Count & Acts per Stage
+  const [stageCount, setStageCount] = useState(2);
+  const [actsPerStage, setActsPerStage] = useState<number[]>([3, 3]);
+
+  // Final step: Stage & Act Names
   const [stages, setStages] = useState<StageData[]>([]);
-
-  // Step 4: Current stage index for act setup
   const [currentStageIndex, setCurrentStageIndex] = useState(0);
 
   const resetWizard = () => {
     setStep(0);
+    setEventType(null);
     setTitle('');
     setEventDate('');
     setStartTime('');
     setVenue('');
-    setStageCount(1);
-    setActsPerStage([1]);
+    setSingleActType('band');
+    setActCount(2);
+    setStageCount(2);
+    setActsPerStage([3, 3]);
     setStages([]);
     setCurrentStageIndex(0);
   };
@@ -78,11 +109,24 @@ export default function NewEventWizard({ isOpen, onClose, onComplete }: NewEvent
     onClose();
   };
 
-  // Generate stages structure when moving to step 3
+  // Generate stages structure based on event type
   const generateStagesStructure = () => {
     const newStages: StageData[] = [];
-    for (let i = 0; i < stageCount; i++) {
-      const actCount = actsPerStage[i] || 1;
+
+    if (eventType === 'single-band') {
+      // Single stage, single act
+      newStages.push({
+        id: uuidv4(),
+        name: 'Main',
+        actCount: 1,
+        acts: [{
+          id: uuidv4(),
+          name: '',
+          type: singleActType,
+        }],
+      });
+    } else if (eventType === 'multi-band') {
+      // Single stage, multiple acts
       const acts: ActData[] = [];
       for (let j = 0; j < actCount; j++) {
         acts.push({
@@ -93,11 +137,31 @@ export default function NewEventWizard({ isOpen, onClose, onComplete }: NewEvent
       }
       newStages.push({
         id: uuidv4(),
-        name: stageCount === 1 ? 'Main' : `Stage ${i + 1}`,
+        name: 'Main',
         actCount,
         acts,
       });
+    } else if (eventType === 'festival') {
+      // Multiple stages, multiple acts per stage
+      for (let i = 0; i < stageCount; i++) {
+        const stageActCount = actsPerStage[i] || 3;
+        const acts: ActData[] = [];
+        for (let j = 0; j < stageActCount; j++) {
+          acts.push({
+            id: uuidv4(),
+            name: '',
+            type: 'band' as ActType,
+          });
+        }
+        newStages.push({
+          id: uuidv4(),
+          name: `Stage ${i + 1}`,
+          actCount: stageActCount,
+          acts,
+        });
+      }
     }
+
     setStages(newStages);
   };
 
@@ -145,11 +209,11 @@ export default function NewEventWizard({ isOpen, onClose, onComplete }: NewEvent
   };
 
   const handleStageCountChange = (delta: number) => {
-    const newCount = Math.max(1, Math.min(10, stageCount + delta));
+    const newCount = Math.max(2, Math.min(10, stageCount + delta));
     setStageCount(newCount);
     // Adjust actsPerStage array
     if (newCount > actsPerStage.length) {
-      setActsPerStage([...actsPerStage, ...Array(newCount - actsPerStage.length).fill(1)]);
+      setActsPerStage([...actsPerStage, ...Array(newCount - actsPerStage.length).fill(3)]);
     } else {
       setActsPerStage(actsPerStage.slice(0, newCount));
     }
@@ -157,35 +221,70 @@ export default function NewEventWizard({ isOpen, onClose, onComplete }: NewEvent
 
   const handleActCountChange = (stageIndex: number, delta: number) => {
     const newActsPerStage = [...actsPerStage];
-    newActsPerStage[stageIndex] = Math.max(1, Math.min(20, (newActsPerStage[stageIndex] || 1) + delta));
+    newActsPerStage[stageIndex] = Math.max(1, Math.min(20, (newActsPerStage[stageIndex] || 3) + delta));
     setActsPerStage(newActsPerStage);
   };
 
+  // Calculate total steps and current step labels based on event type
+  const getSteps = () => {
+    if (eventType === 'single-band') {
+      return ['Event-Typ', 'Details', 'Act-Typ', 'Name'];
+    } else if (eventType === 'multi-band') {
+      return ['Event-Typ', 'Details', 'Anzahl Acts', 'Namen'];
+    } else if (eventType === 'festival') {
+      return ['Event-Typ', 'Details', 'Stages', 'Acts/Stage', 'Namen'];
+    }
+    return ['Event-Typ', 'Details'];
+  };
+
+  const steps = getSteps();
+  const totalSteps = steps.length;
+
   const canProceed = () => {
     switch (step) {
-      case 0: return title.trim().length > 0;
-      case 1: return stageCount >= 1;
-      case 2: return actsPerStage.every(c => c >= 1);
-      case 3: return true;
+      case 0: return eventType !== null;
+      case 1: return title.trim().length > 0;
+      case 2:
+        if (eventType === 'single-band') return true;
+        if (eventType === 'multi-band') return actCount >= 2;
+        if (eventType === 'festival') return stageCount >= 2;
+        return true;
+      case 3:
+        if (eventType === 'festival') return actsPerStage.every(c => c >= 1);
+        return true;
       default: return true;
     }
   };
 
   const handleNext = () => {
-    if (step === 2) {
-      // Generate stages structure before moving to step 3
+    // Before moving to the names step, generate structure
+    const isLastConfigStep = (
+      (eventType === 'single-band' && step === 2) ||
+      (eventType === 'multi-band' && step === 2) ||
+      (eventType === 'festival' && step === 3)
+    );
+
+    if (isLastConfigStep) {
       generateStagesStructure();
     }
     setStep(step + 1);
   };
 
-  const totalSteps = 4;
+  const handleBack = () => {
+    if (step > 0) {
+      setStep(step - 1);
+    } else {
+      handleClose();
+    }
+  };
+
+  const isLastStep = step === totalSteps - 1;
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Neues Event erstellen" size="lg">
       {/* Progress indicator */}
       <div className="flex items-center gap-2 mb-6">
-        {[0, 1, 2, 3].map((s) => (
+        {steps.map((_, s) => (
           <div key={s} className="flex items-center">
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
@@ -198,7 +297,7 @@ export default function NewEventWizard({ isOpen, onClose, onComplete }: NewEvent
             >
               {s < step ? <Check className="w-4 h-4" /> : s + 1}
             </div>
-            {s < 3 && (
+            {s < steps.length - 1 && (
               <div
                 className={`w-8 h-1 ${
                   s < step ? 'bg-green-500' : 'bg-zinc-200 dark:bg-zinc-700'
@@ -208,21 +307,65 @@ export default function NewEventWizard({ isOpen, onClose, onComplete }: NewEvent
           </div>
         ))}
         <span className="ml-2 text-sm text-zinc-500">
-          {step === 0 && 'Event-Details'}
-          {step === 1 && 'Stages'}
-          {step === 2 && 'Acts pro Stage'}
-          {step === 3 && 'Namen'}
+          {steps[step]}
         </span>
       </div>
 
-      {/* Step 0: Event Basics */}
+      {/* Step 0: Event Type Selection */}
       {step === 0 && (
+        <div className="space-y-4">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+            Was für ein Event planst du?
+          </p>
+
+          <div className="space-y-3">
+            {EVENT_TYPES.map((type) => (
+              <button
+                key={type.value}
+                onClick={() => setEventType(type.value)}
+                className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left ${
+                  eventType === type.value
+                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                    : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
+                }`}
+              >
+                <div className={`p-3 rounded-lg ${
+                  eventType === type.value
+                    ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400'
+                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
+                }`}>
+                  {type.icon}
+                </div>
+                <div>
+                  <h3 className={`font-medium ${
+                    eventType === type.value
+                      ? 'text-indigo-600 dark:text-indigo-400'
+                      : 'text-zinc-900 dark:text-zinc-100'
+                  }`}>
+                    {type.label}
+                  </h3>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                    {type.description}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Step 1: Event Basics */}
+      {step === 1 && (
         <div className="space-y-4">
           <Input
             label="Event-Name *"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="z.B. Sommerfest 2024, Clubnacht, etc."
+            placeholder={
+              eventType === 'single-band' ? 'z.B. Konzert im Club XY' :
+              eventType === 'multi-band' ? 'z.B. Rock Night 2024' :
+              'z.B. Summer Festival 2024'
+            }
             autoFocus
           />
           <div className="grid grid-cols-2 gap-4">
@@ -248,18 +391,92 @@ export default function NewEventWizard({ isOpen, onClose, onComplete }: NewEvent
         </div>
       )}
 
-      {/* Step 1: Stage Count */}
-      {step === 1 && (
+      {/* Single-band: Step 2 - Act Type */}
+      {step === 2 && eventType === 'single-band' && (
+        <div className="space-y-4">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+            Was für ein Act ist es?
+          </p>
+
+          <div className="grid grid-cols-2 gap-3">
+            {ACT_TYPE_OPTIONS.map((type) => (
+              <button
+                key={type.value}
+                onClick={() => setSingleActType(type.value)}
+                className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                  singleActType === type.value
+                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                    : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
+                }`}
+              >
+                <div className={`p-2 rounded-lg ${
+                  singleActType === type.value
+                    ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400'
+                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
+                }`}>
+                  {type.icon}
+                </div>
+                <span className={`font-medium ${
+                  singleActType === type.value
+                    ? 'text-indigo-600 dark:text-indigo-400'
+                    : 'text-zinc-900 dark:text-zinc-100'
+                }`}>
+                  {type.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Multi-band: Step 2 - Act Count */}
+      {step === 2 && eventType === 'multi-band' && (
         <div className="space-y-6">
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Wie viele Bühnen/Stages hat dein Event?
+            Wie viele Acts spielen?
+          </p>
+
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setActCount(Math.max(2, actCount - 1))}
+                disabled={actCount <= 2}
+                className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              >
+                <Minus className="w-5 h-5" />
+              </button>
+              <div className="w-20 h-20 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                <span className="text-4xl font-bold text-indigo-600 dark:text-indigo-400">
+                  {actCount}
+                </span>
+              </div>
+              <button
+                onClick={() => setActCount(Math.min(20, actCount + 1))}
+                disabled={actCount >= 20}
+                className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-lg font-medium">
+              {actCount} Acts
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Festival: Step 2 - Stage Count */}
+      {step === 2 && eventType === 'festival' && (
+        <div className="space-y-6">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            Wie viele Bühnen/Stages hat das Festival?
           </p>
 
           <div className="flex flex-col items-center gap-4">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => handleStageCountChange(-1)}
-                disabled={stageCount <= 1}
+                disabled={stageCount <= 2}
                 className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
                 <Minus className="w-5 h-5" />
@@ -278,18 +495,14 @@ export default function NewEventWizard({ isOpen, onClose, onComplete }: NewEvent
               </button>
             </div>
             <p className="text-lg font-medium">
-              {stageCount === 1 ? '1 Stage' : `${stageCount} Stages`}
+              {stageCount} Stages
             </p>
           </div>
-
-          <p className="text-xs text-zinc-400 text-center">
-            Bei einfachen Events (Konzert, Club) reicht 1 Stage. Festivals haben oft mehrere.
-          </p>
         </div>
       )}
 
-      {/* Step 2: Acts per Stage */}
-      {step === 2 && (
+      {/* Festival: Step 3 - Acts per Stage */}
+      {step === 3 && eventType === 'festival' && (
         <div className="space-y-6">
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             Wie viele Acts spielen auf jeder Stage?
@@ -299,45 +512,41 @@ export default function NewEventWizard({ isOpen, onClose, onComplete }: NewEvent
             {Array.from({ length: stageCount }).map((_, index) => (
               <div key={index} className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
                 <span className="font-medium">
-                  {stageCount === 1 ? 'Main Stage' : `Stage ${index + 1}`}
+                  Stage {index + 1}
                 </span>
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => handleActCountChange(index, -1)}
-                    disabled={(actsPerStage[index] || 1) <= 1}
+                    disabled={(actsPerStage[index] || 3) <= 1}
                     className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                   >
                     <Minus className="w-4 h-4" />
                   </button>
                   <span className="w-8 text-center text-xl font-bold text-indigo-600 dark:text-indigo-400">
-                    {actsPerStage[index] || 1}
+                    {actsPerStage[index] || 3}
                   </span>
                   <button
                     onClick={() => handleActCountChange(index, 1)}
-                    disabled={(actsPerStage[index] || 1) >= 20}
+                    disabled={(actsPerStage[index] || 3) >= 20}
                     className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
                   <span className="text-sm text-zinc-500 w-12">
-                    {(actsPerStage[index] || 1) === 1 ? 'Act' : 'Acts'}
+                    {(actsPerStage[index] || 3) === 1 ? 'Act' : 'Acts'}
                   </span>
                 </div>
               </div>
             ))}
           </div>
-
-          <p className="text-xs text-zinc-400 text-center">
-            Acts sind z.B. Bands, DJs, Solo-Künstler oder Workshops.
-          </p>
         </div>
       )}
 
-      {/* Step 3: Stage & Act Names */}
-      {step === 3 && (
+      {/* Final Step: Names */}
+      {isLastStep && (
         <div className="space-y-4">
-          {/* Stage Tabs */}
-          {stages.length > 1 && (
+          {/* Stage Tabs (only for festival) */}
+          {eventType === 'festival' && stages.length > 1 && (
             <div className="flex gap-1 border-b border-zinc-200 dark:border-zinc-700 mb-4">
               {stages.map((stage, index) => (
                 <button
@@ -355,29 +564,36 @@ export default function NewEventWizard({ isOpen, onClose, onComplete }: NewEvent
             </div>
           )}
 
-          {/* Stage Name */}
-          <div className="mb-4">
-            <Input
-              label="Stage-Name"
-              value={stages[currentStageIndex]?.name || ''}
-              onChange={(e) => updateStageName(stages[currentStageIndex]?.id, e.target.value)}
-              placeholder={`Stage ${currentStageIndex + 1}`}
-            />
-          </div>
+          {/* Stage Name (only for festival) */}
+          {eventType === 'festival' && (
+            <div className="mb-4">
+              <Input
+                label="Stage-Name"
+                value={stages[currentStageIndex]?.name || ''}
+                onChange={(e) => updateStageName(stages[currentStageIndex]?.id, e.target.value)}
+                placeholder={`Stage ${currentStageIndex + 1}`}
+              />
+            </div>
+          )}
 
           <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">
-            Acts für {stages[currentStageIndex]?.name || `Stage ${currentStageIndex + 1}`}:
+            {eventType === 'single-band' ? 'Act-Name:' :
+             eventType === 'multi-band' ? 'Acts:' :
+             `Acts für ${stages[currentStageIndex]?.name || `Stage ${currentStageIndex + 1}`}:`}
           </p>
 
           <div className="space-y-3 max-h-48 overflow-y-auto">
             {stages[currentStageIndex]?.acts.map((act, actIndex) => (
               <div key={act.id} className="flex items-center gap-2 p-2 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
-                <span className="w-6 text-center text-sm text-zinc-400">{actIndex + 1}.</span>
+                {stages[currentStageIndex]?.acts.length > 1 && (
+                  <span className="w-6 text-center text-sm text-zinc-400">{actIndex + 1}.</span>
+                )}
                 <Input
                   value={act.name}
                   onChange={(e) => updateAct(stages[currentStageIndex].id, act.id, 'name', e.target.value)}
-                  placeholder={`Act ${actIndex + 1}`}
+                  placeholder={eventType === 'single-band' ? 'Name eingeben' : `Act ${actIndex + 1}`}
                   className="flex-1"
+                  autoFocus={actIndex === 0}
                 />
                 <select
                   value={act.type}
@@ -394,7 +610,7 @@ export default function NewEventWizard({ isOpen, onClose, onComplete }: NewEvent
             ))}
           </div>
 
-          {stages.length > 1 && currentStageIndex < stages.length - 1 && (
+          {eventType === 'festival' && stages.length > 1 && currentStageIndex < stages.length - 1 && (
             <p className="text-xs text-amber-600 dark:text-amber-400">
               Vergiss nicht, auch die anderen Stages zu benennen!
             </p>
@@ -406,13 +622,13 @@ export default function NewEventWizard({ isOpen, onClose, onComplete }: NewEvent
       <div className="flex justify-between mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-700">
         <Button
           variant="secondary"
-          onClick={() => step > 0 ? setStep(step - 1) : handleClose()}
+          onClick={handleBack}
         >
           <ChevronLeft className="w-4 h-4 mr-1" />
           {step === 0 ? 'Abbrechen' : 'Zurück'}
         </Button>
 
-        {step < totalSteps - 1 ? (
+        {!isLastStep ? (
           <Button onClick={handleNext} disabled={!canProceed()}>
             Weiter
             <ChevronRight className="w-4 h-4 ml-1" />
