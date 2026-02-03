@@ -10,6 +10,101 @@ function hashPassword(password: string): string {
   return crypto.createHash('sha256').update(password).digest('hex');
 }
 
+// Helper type for stages structure
+interface StageData {
+  id: string;
+  name: string;
+  acts: ActData[];
+}
+
+interface ActData {
+  id: string;
+  name: string;
+  type: string;
+  songs: SongData[];
+}
+
+interface SongData {
+  id: string;
+  position: number;
+  type: string;
+  title: string;
+  duration?: string;
+  [key: string]: unknown;
+}
+
+// Flatten hierarchical stages > acts > songs to flat songs array
+function flattenStagesToSongs(stages: StageData[]): SongData[] {
+  const songs: SongData[] = [];
+  let position = 1;
+
+  for (const stage of stages) {
+    for (const act of stage.acts) {
+      // Add act marker as a special song entry
+      songs.push({
+        id: act.id,
+        position: position++,
+        type: 'act',
+        title: act.name,
+        actType: act.type,
+        duration: '',
+      });
+
+      // Add all songs from this act
+      for (const song of act.songs) {
+        songs.push({
+          ...song,
+          position: position++,
+        });
+      }
+    }
+  }
+
+  return songs;
+}
+
+// Rebuild stages structure from flat songs array
+// This preserves the original stage/act structure while updating song data
+function rebuildStagesFromSongs(originalStages: StageData[], flatSongs: SongData[]): StageData[] {
+  // Create a map of song updates by ID
+  const songUpdates = new Map<string, SongData>();
+  const actUpdates = new Map<string, { name: string; type: string }>();
+
+  for (const song of flatSongs) {
+    if (song.type === 'act') {
+      // This is an act marker
+      actUpdates.set(song.id, {
+        name: song.title,
+        type: (song.actType as string) || 'band'
+      });
+    } else {
+      songUpdates.set(song.id, song);
+    }
+  }
+
+  // Rebuild stages with updated data
+  return originalStages.map(stage => ({
+    ...stage,
+    acts: stage.acts.map(act => {
+      const actUpdate = actUpdates.get(act.id);
+      return {
+        ...act,
+        name: actUpdate?.name ?? act.name,
+        type: actUpdate?.type ?? act.type,
+        songs: act.songs.map(song => {
+          const update = songUpdates.get(song.id);
+          if (update) {
+            // Remove act-specific fields that shouldn't be on songs
+            const { actType, ...songData } = update;
+            return songData as SongData;
+          }
+          return song;
+        })
+      };
+    })
+  }));
+}
+
 // POST /api/gig/[token] - Authentifizieren und Gig laden
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
@@ -39,11 +134,34 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Falsches Passwort' }, { status: 401 });
     }
 
-    // Songs parsen
-    let songs = [];
+    // Data parsen - support both old (songs array) and new (stages) format
+    let songs: unknown[] = [];
+    let stages = undefined;
     try {
-      songs = JSON.parse(setlist.encrypted_data || '[]');
-    } catch {
+      const data = JSON.parse(setlist.encrypted_data || '[]');
+      if (Array.isArray(data)) {
+        // Old format: flat array of songs
+        songs = data;
+      } else if (data && typeof data === 'object') {
+        if (data.stages && Array.isArray(data.stages)) {
+          // New format: stages > acts > songs
+          stages = data.stages;
+          // Flatten stages/acts/songs to flat array for backwards compatibility
+          songs = flattenStagesToSongs(data.stages);
+        } else if (data.songs && Array.isArray(data.songs)) {
+          // Possible intermediate format with songs as property
+          songs = data.songs;
+        }
+        // else: object without stages or songs - keep songs as empty array
+      }
+    } catch (parseError) {
+      console.error('Error parsing encrypted_data:', parseError);
+      songs = [];
+    }
+
+    // Ensure songs is always an array
+    if (!Array.isArray(songs)) {
+      console.error('Songs is not an array, resetting to empty array');
       songs = [];
     }
 
@@ -71,6 +189,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         startTime: setlist.start_time,
         venue: setlist.venue,
         songs,
+        stages,
         customFields,
         updatedAt: setlist.updated_at,
         lastEditedBy: setlist.last_edited_by,
@@ -90,16 +209,16 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const { token } = await params;
     const body = await request.json();
-    const { password, title, eventDate, startTime, venue, songs, editorName, expectedUpdatedAt } = body;
+    const { password, title, eventDate, startTime, venue, songs, stages, editorName, expectedUpdatedAt } = body;
 
     if (!password) {
       return NextResponse.json({ error: 'Passwort erforderlich' }, { status: 400 });
     }
 
-    // Gig mit Token finden
+    // Gig mit Token finden (including encrypted_data to check format)
     const { data: setlist, error: fetchError } = await supabase
       .from('setlists')
-      .select('id, share_password_hash, updated_at')
+      .select('id, share_password_hash, updated_at, encrypted_data')
       .eq('share_token', token)
       .eq('is_shared', true)
       .single();
@@ -126,8 +245,33 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Songs als JSON speichern
-    const songsData = JSON.stringify(songs || []);
+    // Determine if the original data is in new format (stages)
+    let isNewFormat = false;
+    let originalStages: StageData[] | null = null;
+    try {
+      const existingData = JSON.parse(setlist.encrypted_data || '[]');
+      if (!Array.isArray(existingData) && existingData.stages) {
+        isNewFormat = true;
+        originalStages = existingData.stages;
+      }
+    } catch {
+      // Ignore parse errors
+    }
+
+    // Data als JSON speichern - maintain original format
+    let dataToStore: string;
+    if (stages) {
+      // Client sent stages directly (new format)
+      dataToStore = JSON.stringify({ stages });
+    } else if (isNewFormat && originalStages && songs) {
+      // Original was new format, but client sent flat songs array
+      // Convert songs back to stages structure
+      const updatedStages = rebuildStagesFromSongs(originalStages, songs);
+      dataToStore = JSON.stringify({ stages: updatedStages });
+    } else {
+      // Old format: store songs array
+      dataToStore = JSON.stringify(songs || []);
+    }
     const newUpdatedAt = new Date().toISOString();
 
     // Update
@@ -138,7 +282,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         event_date: eventDate || null,
         start_time: startTime || null,
         venue: venue || null,
-        encrypted_data: songsData,
+        encrypted_data: dataToStore,
         updated_at: newUpdatedAt,
         last_edited_by: editorName || 'Geteilt',
       })

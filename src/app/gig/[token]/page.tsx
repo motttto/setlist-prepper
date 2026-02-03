@@ -190,8 +190,9 @@ export default function SharedGigPage() {
       setEventDate(data.data.eventDate || '');
       setStartTime(data.data.startTime || '');
       setVenue(data.data.venue || '');
-      setSongs(data.data.songs || []);
-      setCustomFields(data.data.customFields || []);
+      // Ensure songs is always an array
+      setSongs(Array.isArray(data.data.songs) ? data.data.songs : []);
+      setCustomFields(Array.isArray(data.data.customFields) ? data.data.customFields : []);
       setUpdatedAt(data.data.updatedAt || '');
       setLastEditedBy(data.data.lastEditedBy || '');
       setIsAuthenticated(true);
@@ -531,7 +532,8 @@ export default function SharedGigPage() {
         setEventDate(data.data.eventDate || '');
         setStartTime(data.data.startTime || '');
         setVenue(data.data.venue || '');
-        setSongs(data.data.songs || []);
+        // Ensure songs is always an array
+        setSongs(Array.isArray(data.data.songs) ? data.data.songs : []);
         setUpdatedAt(data.data.updatedAt || '');
         setLastEditedBy(data.data.lastEditedBy || '');
         setSelectedSongId(null);
