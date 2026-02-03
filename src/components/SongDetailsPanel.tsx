@@ -11,6 +11,7 @@ interface SongDetailsPanelProps {
   onChange: (song: Song) => void;
   onAddCustomField?: (field: { fieldName: string; fieldType: CustomFieldType; dropdownOptions?: string[] }) => void;
   onDeleteCustomField?: (fieldId: string) => void;
+  displayPosition?: number;
 }
 
 export default function SongDetailsPanel({
@@ -19,6 +20,7 @@ export default function SongDetailsPanel({
   onChange,
   onAddCustomField,
   onDeleteCustomField,
+  displayPosition,
 }: SongDetailsPanelProps) {
   const [newMediaLink, setNewMediaLink] = useState('');
   const [showAddField, setShowAddField] = useState(false);
@@ -95,7 +97,7 @@ export default function SongDetailsPanel({
         return {
           bg: 'bg-indigo-50 dark:bg-indigo-900',
           icon: <Music className="w-5 h-5 text-indigo-500" />,
-          label: `Song #${song.position}`,
+          label: `Song #${displayPosition ?? song.position}`,
         };
     }
   };

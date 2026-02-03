@@ -631,6 +631,19 @@ export default function SharedGigPage() {
 
   const selectedSong = songs.find((s) => s.id === selectedSongId) || null;
 
+  // Calculate display position for selected song
+  const selectedSongDisplayPosition = (() => {
+    if (!selectedSong || selectedSong.muted || (selectedSong.type || 'song') !== 'song') return undefined;
+    let pos = 0;
+    for (const s of songs) {
+      if (!s.muted && (s.type || 'song') === 'song') {
+        pos++;
+      }
+      if (s.id === selectedSongId) return pos;
+    }
+    return undefined;
+  })();
+
   // Password Entry View
   if (!isAuthenticated) {
     return (
@@ -936,7 +949,7 @@ export default function SharedGigPage() {
                           if (!song.muted && (song.type || 'song') === 'song') {
                             activePosition++;
                           }
-                          const displayPos = song.muted ? undefined : activePosition;
+                          const displayPos = (!song.muted && (song.type || 'song') === 'song') ? activePosition : undefined;
                           return (
                             <SongListItem
                               key={song.id}
@@ -976,6 +989,7 @@ export default function SharedGigPage() {
                 }}
                 onAddCustomField={handleAddCustomField}
                 onDeleteCustomField={handleDeleteCustomField}
+                displayPosition={selectedSongDisplayPosition}
               />
             </div>
           </div>
@@ -1011,6 +1025,7 @@ export default function SharedGigPage() {
                     }}
                     onAddCustomField={handleAddCustomField}
                     onDeleteCustomField={handleDeleteCustomField}
+                    displayPosition={selectedSongDisplayPosition}
                   />
                 </div>
               </div>

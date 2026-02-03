@@ -293,18 +293,26 @@ export default function EventPanel({
     );
   };
 
-  // Find selected song across all stages/acts
-  const findSelectedSong = (): Song | null => {
+  // Find selected song across all stages/acts and calculate its display position
+  const findSelectedSongWithPosition = (): { song: Song | null; displayPosition: number | undefined } => {
     for (const stage of stages) {
       for (const act of stage.acts) {
-        const song = act.songs.find((s) => s.id === selectedSongId);
-        if (song) return song;
+        let activePos = 0;
+        for (const song of act.songs) {
+          if (!song.muted && song.type === 'song') {
+            activePos++;
+          }
+          if (song.id === selectedSongId) {
+            const displayPos = (!song.muted && song.type === 'song') ? activePos : undefined;
+            return { song, displayPosition: displayPos };
+          }
+        }
       }
     }
-    return null;
+    return { song: null, displayPosition: undefined };
   };
 
-  const selectedSong = findSelectedSong();
+  const { song: selectedSong, displayPosition: selectedSongDisplayPosition } = findSelectedSongWithPosition();
 
   // Update song in the correct act
   const handleUpdateSong = (updatedSong: Song) => {
@@ -594,6 +602,7 @@ export default function EventPanel({
             song={selectedSong}
             customFields={customFields}
             onChange={handleUpdateSong}
+            displayPosition={selectedSongDisplayPosition}
           />
         </div>
       </div>
@@ -621,6 +630,7 @@ export default function EventPanel({
                 song={selectedSong}
                 customFields={customFields}
                 onChange={handleUpdateSong}
+                displayPosition={selectedSongDisplayPosition}
               />
             </div>
           </div>

@@ -322,7 +322,7 @@ export default function ActSection({
                       if (!song.muted && song.type === 'song') {
                         activePosition++;
                       }
-                      const displayPos = song.muted ? undefined : activePosition;
+                      const displayPos = (!song.muted && song.type === 'song') ? activePosition : undefined;
                       return (
                         <SongListItem
                           key={song.id}
