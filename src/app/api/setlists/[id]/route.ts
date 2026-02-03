@@ -6,6 +6,7 @@ import {
   updateSetlist,
   deleteSetlist,
 } from '@/lib/supabase';
+import { migrateToEventStructure } from '@/lib/eventMigration';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -30,13 +31,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Parse data from JSON - support both old and new format
-    let songs = [];
+    // Parse data from JSON and migrate to new format
+    let songs: unknown[] = [];
     let stages = undefined;
     try {
       const data = JSON.parse(setlist.encrypted_data || '[]');
       if (Array.isArray(data)) {
-        // Old format: flat array of songs
+        // Old format: flat array of songs - will be migrated client-side
         songs = data;
       } else if (data.stages) {
         // New format: stages > acts > songs
@@ -46,17 +47,31 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       songs = [];
     }
 
+    // Build base event data for migration
+    const baseEventData = {
+      id: setlist.id,
+      title: setlist.title,
+      eventDate: setlist.event_date,
+      startTime: setlist.start_time,
+      venue: setlist.venue,
+      createdAt: setlist.created_at,
+      updatedAt: setlist.updated_at,
+      ...(stages ? { stages } : { songs }),
+    };
+
+    // Always migrate to ensure consistent format
+    const migratedEvent = migrateToEventStructure(baseEventData as Parameters<typeof migrateToEventStructure>[0]);
+
     return NextResponse.json({
       data: {
-        id: setlist.id,
-        title: setlist.title,
-        eventDate: setlist.event_date,
-        startTime: setlist.start_time,
-        venue: setlist.venue,
-        songs,
-        stages,
-        createdAt: setlist.created_at,
-        updatedAt: setlist.updated_at,
+        id: migratedEvent.id,
+        title: migratedEvent.title,
+        eventDate: migratedEvent.eventDate,
+        startTime: migratedEvent.startTime,
+        venue: migratedEvent.venue,
+        stages: migratedEvent.stages,
+        createdAt: migratedEvent.createdAt,
+        updatedAt: migratedEvent.updatedAt,
         lastEditedBy: setlist.last_edited_by,
       },
     });

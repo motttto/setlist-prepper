@@ -47,18 +47,15 @@ export default function GigEditDialog({
   }, [isOpen]);
 
   const handleClose = useCallback(() => {
-    console.log('[GigEditDialog] handleClose called');
     onClose();
   }, [onClose]);
 
   const handleSave = useCallback(() => {
-    console.log('[GigEditDialog] handleSave called');
     onSave({ title, eventDate, startTime, venue });
     onClose();
   }, [title, eventDate, startTime, venue, onSave, onClose]);
 
   const handleBackdropClick = useCallback((e: React.MouseEvent) => {
-    console.log('[GigEditDialog] backdrop clicked');
     e.preventDefault();
     e.stopPropagation();
     handleClose();
@@ -99,7 +96,6 @@ export default function GigEditDialog({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log('[GigEditDialog] X button clicked');
               handleClose();
             }}
             className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
@@ -148,7 +144,6 @@ export default function GigEditDialog({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log('[GigEditDialog] Abbrechen clicked');
               handleClose();
             }}
             className="px-4 py-2 text-base font-medium rounded-lg bg-zinc-200 text-zinc-900 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600 transition-colors"
@@ -160,7 +155,6 @@ export default function GigEditDialog({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log('[GigEditDialog] Speichern clicked');
               handleSave();
             }}
             className="px-4 py-2 text-base font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"

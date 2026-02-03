@@ -5,18 +5,86 @@ import { Event, Stage, Act, Song, LegacySetlist, ActType } from '@/types';
  * Migriert alte flache Setlist-Struktur zu neuer Event > Stage > Act > Song Hierarchie
  */
 export function migrateToEventStructure(data: LegacySetlist | Event): Event {
-  // Prüfe ob bereits neue Struktur (hat stages Array)
+  // Safety check for null/undefined data
+  if (!data) {
+    return {
+      id: uuidv4(),
+      title: 'Neues Event',
+      eventDate: null,
+      startTime: null,
+      venue: null,
+      stages: [{
+        id: uuidv4(),
+        name: 'Main',
+        position: 1,
+        acts: [{
+          id: uuidv4(),
+          name: 'Programm',
+          type: 'band',
+          position: 1,
+          songs: []
+        }]
+      }],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  // Prüfe ob bereits neue Struktur (hat stages Array mit Inhalt)
   if ('stages' in data && Array.isArray(data.stages) && data.stages.length > 0) {
-    // Ensure all acts have a songs array (defensive check for corrupted data)
+    // Ensure all stages have acts and all acts have songs array (defensive check for corrupted data)
     const eventData = data as Event;
-    const sanitizedStages = eventData.stages.map(stage => ({
-      ...stage,
-      acts: (stage.acts || []).map(act => ({
-        ...act,
-        songs: act.songs || []
-      }))
-    }));
+    const sanitizedStages = eventData.stages.map(stage => {
+      // Ensure stage has acts array
+      const acts = stage.acts || [];
+      // If no acts, create a default one
+      if (acts.length === 0) {
+        return {
+          ...stage,
+          acts: [{
+            id: uuidv4(),
+            name: 'Programm',
+            type: 'band' as ActType,
+            position: 1,
+            songs: []
+          }]
+        };
+      }
+      // Ensure all acts have songs array
+      return {
+        ...stage,
+        acts: acts.map(act => ({
+          ...act,
+          songs: act.songs || []
+        }))
+      };
+    });
     return { ...eventData, stages: sanitizedStages };
+  }
+
+  // Check if stages exists but is empty - treat as new format needing default stage
+  if ('stages' in data && Array.isArray(data.stages) && data.stages.length === 0) {
+    return {
+      id: data.id || uuidv4(),
+      title: data.title || 'Neues Event',
+      eventDate: data.eventDate || null,
+      startTime: data.startTime || null,
+      venue: data.venue || null,
+      stages: [{
+        id: uuidv4(),
+        name: 'Main',
+        position: 1,
+        acts: [{
+          id: uuidv4(),
+          name: 'Programm',
+          type: 'band',
+          position: 1,
+          songs: []
+        }]
+      }],
+      createdAt: data.createdAt || new Date().toISOString(),
+      updatedAt: data.updatedAt || new Date().toISOString(),
+    };
   }
 
   // Alte Struktur: songs Array direkt im Setlist
