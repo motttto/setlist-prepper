@@ -63,6 +63,36 @@ function flattenStagesToSongs(stages: StageData[]): SongData[] {
   return songs;
 }
 
+// Merge a specific act from updated stages into the original stages
+// Used for act-specific shares to only update the shared act
+function mergeActIntoStages(originalStages: StageData[], updatedStages: StageData[], actId: string): StageData[] {
+  // Find the updated act in the updated stages
+  let updatedAct: ActData | null = null;
+  for (const stage of updatedStages) {
+    const act = stage.acts.find(a => a.id === actId);
+    if (act) {
+      updatedAct = act;
+      break;
+    }
+  }
+
+  if (!updatedAct) {
+    // Act not found in updates, return original
+    return originalStages;
+  }
+
+  // Merge the updated act into the original stages
+  return originalStages.map(stage => ({
+    ...stage,
+    acts: stage.acts.map(act => {
+      if (act.id === actId) {
+        return updatedAct!;
+      }
+      return act;
+    })
+  }));
+}
+
 // Rebuild stages structure from flat songs array
 // This preserves the original stage/act structure while updating song data
 function rebuildStagesFromSongs(originalStages: StageData[], flatSongs: SongData[]): StageData[] {
@@ -134,9 +164,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Falsches Passwort' }, { status: 401 });
     }
 
+    // Check if this is an act-specific share
+    const sharedActId = setlist.shared_act_id;
+    let sharedActName: string | null = null;
+
     // Data parsen - support both old (songs array) and new (stages) format
     let songs: unknown[] = [];
-    let stages = undefined;
+    let stages: StageData[] | undefined = undefined;
     try {
       const data = JSON.parse(setlist.encrypted_data || '[]');
       if (Array.isArray(data)) {
@@ -145,9 +179,25 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       } else if (data && typeof data === 'object') {
         if (data.stages && Array.isArray(data.stages)) {
           // New format: stages > acts > songs
-          stages = data.stages;
+          let parsedStages: StageData[] = data.stages;
+
+          // If act-specific share, filter to only that act
+          if (sharedActId) {
+            parsedStages = parsedStages.map(stage => ({
+              ...stage,
+              acts: stage.acts.filter(act => {
+                if (act.id === sharedActId) {
+                  sharedActName = act.name;
+                  return true;
+                }
+                return false;
+              })
+            })).filter(stage => stage.acts.length > 0);
+          }
+
+          stages = parsedStages;
           // Flatten stages/acts/songs to flat array for backwards compatibility
-          songs = flattenStagesToSongs(data.stages);
+          songs = flattenStagesToSongs(parsedStages);
         } else if (data.songs && Array.isArray(data.songs)) {
           // Possible intermediate format with songs as property
           songs = data.songs;
@@ -193,6 +243,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         customFields,
         updatedAt: setlist.updated_at,
         lastEditedBy: setlist.last_edited_by,
+        // Act-share info
+        isActShare: !!sharedActId,
+        sharedActId,
+        sharedActName,
       },
     });
   } catch (error) {
@@ -218,7 +272,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     // Gig mit Token finden (including encrypted_data to check format)
     const { data: setlist, error: fetchError } = await supabase
       .from('setlists')
-      .select('id, share_password_hash, updated_at, encrypted_data')
+      .select('id, share_password_hash, updated_at, encrypted_data, shared_act_id')
       .eq('share_token', token)
       .eq('is_shared', true)
       .single();
@@ -248,6 +302,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     // Determine if the original data is in new format (stages)
     let isNewFormat = false;
     let originalStages: StageData[] | null = null;
+    const sharedActId = setlist.shared_act_id;
+
     try {
       const existingData = JSON.parse(setlist.encrypted_data || '[]');
       if (!Array.isArray(existingData) && existingData.stages) {
@@ -262,11 +318,23 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     let dataToStore: string;
     if (stages) {
       // Client sent stages directly (new format)
-      dataToStore = JSON.stringify({ stages });
+      if (sharedActId && originalStages) {
+        // Act-specific share: merge only the shared act back into original stages
+        const mergedStages = mergeActIntoStages(originalStages, stages, sharedActId);
+        dataToStore = JSON.stringify({ stages: mergedStages });
+      } else {
+        dataToStore = JSON.stringify({ stages });
+      }
     } else if (isNewFormat && originalStages && songs) {
       // Original was new format, but client sent flat songs array
       // Convert songs back to stages structure
-      const updatedStages = rebuildStagesFromSongs(originalStages, songs);
+      let updatedStages = rebuildStagesFromSongs(originalStages, songs);
+
+      if (sharedActId) {
+        // Act-specific share: merge only the shared act back into original stages
+        updatedStages = mergeActIntoStages(originalStages, updatedStages, sharedActId);
+      }
+
       dataToStore = JSON.stringify({ stages: updatedStages });
     } else {
       // Old format: store songs array

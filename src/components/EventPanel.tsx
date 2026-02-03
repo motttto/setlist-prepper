@@ -6,6 +6,7 @@ import { Event, Stage, Act, Song, CustomField, ActType, SongType } from '@/types
 import StageTabs from './StageTabs';
 import ActSection from './ActSection';
 import SongDetailsPanel from './SongDetailsPanel';
+import ShareDialog from './ShareDialog';
 import { Button } from './ui';
 import GigEditDialog from './GigEditDialog';
 import {
@@ -72,6 +73,8 @@ export default function EventPanel({
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [showMobileDetails, setShowMobileDetails] = useState(false);
   const [showAddActMenu, setShowAddActMenu] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [sharePreselectedActId, setSharePreselectedActId] = useState<string | undefined>(undefined);
   const initialLoadRef = useRef(true);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const AUTO_SAVE_DELAY = 2000;
@@ -532,6 +535,10 @@ export default function EventPanel({
                       }
                     }}
                     selectedSongId={selectedSongId}
+                    onShare={(actId) => {
+                      setSharePreselectedActId(actId);
+                      setShowShareDialog(true);
+                    }}
                   />
                 ))
               )}
@@ -620,6 +627,21 @@ export default function EventPanel({
         <div
           className="fixed inset-0 z-0"
           onClick={() => setShowAddActMenu(false)}
+        />
+      )}
+
+      {/* Share Dialog */}
+      {event && (
+        <ShareDialog
+          setlistId={event.id}
+          setlistTitle={title}
+          isOpen={showShareDialog}
+          onClose={() => {
+            setShowShareDialog(false);
+            setSharePreselectedActId(undefined);
+          }}
+          stages={stages}
+          preselectedActId={sharePreselectedActId}
         />
       )}
     </div>

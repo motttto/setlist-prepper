@@ -2,13 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { Button, Input, Card, ConfirmModal } from './ui';
-import { Share2, Copy, Check, X, Link2, Loader2 } from 'lucide-react';
+import { Share2, Copy, Check, X, Link2, Loader2, Users } from 'lucide-react';
+import { Stage, Act } from '@/types';
 
 interface ShareDialogProps {
   setlistId: string;
   setlistTitle: string;
   isOpen: boolean;
   onClose: () => void;
+  stages?: Stage[];  // For act selection dropdown
+  preselectedActId?: string;  // When opened from act share button
 }
 
 export default function ShareDialog({
@@ -16,6 +19,8 @@ export default function ShareDialog({
   setlistTitle,
   isOpen,
   onClose,
+  stages = [],
+  preselectedActId,
 }: ShareDialogProps) {
   const [isShared, setIsShared] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
@@ -25,12 +30,22 @@ export default function ShareDialog({
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [showDisableConfirm, setShowDisableConfirm] = useState(false);
+  const [selectedActId, setSelectedActId] = useState<string>(preselectedActId || '');
+  const [sharedActId, setSharedActId] = useState<string | null>(null);
+  const [sharedActName, setSharedActName] = useState<string | null>(null);
+
+  // Flatten all acts from all stages for the dropdown
+  const allActs: Act[] = stages.flatMap(stage => stage.acts || []);
 
   useEffect(() => {
     if (isOpen) {
       loadShareStatus();
+      // Set preselected act when dialog opens
+      if (preselectedActId) {
+        setSelectedActId(preselectedActId);
+      }
     }
-  }, [isOpen, setlistId]);
+  }, [isOpen, setlistId, preselectedActId]);
 
   const loadShareStatus = async () => {
     setIsLoading(true);
@@ -43,6 +58,8 @@ export default function ShareDialog({
       if (data.data) {
         setIsShared(data.data.isShared);
         setShareUrl(data.data.shareUrl || '');
+        setSharedActId(data.data.sharedActId || null);
+        setSharedActName(data.data.sharedActName || null);
       }
     } catch (err) {
       console.error('Error loading share status:', err);
@@ -64,7 +81,10 @@ export default function ShareDialog({
       const response = await fetch(`/api/setlists/${setlistId}/share`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({
+          password,
+          actId: selectedActId || null,  // null = full event
+        }),
       });
 
       const data = await response.json();
@@ -75,7 +95,16 @@ export default function ShareDialog({
 
       setIsShared(true);
       setShareUrl(data.data.shareUrl);
+      setSharedActId(data.data.sharedActId || null);
+      // Get act name from local data
+      if (selectedActId) {
+        const act = allActs.find(a => a.id === selectedActId);
+        setSharedActName(act?.name || null);
+      } else {
+        setSharedActName(null);
+      }
       setPassword('');
+      setSelectedActId('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fehler beim Aktivieren');
     } finally {
@@ -100,6 +129,8 @@ export default function ShareDialog({
 
       setIsShared(false);
       setShareUrl('');
+      setSharedActId(null);
+      setSharedActName(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fehler beim Deaktivieren');
     } finally {
@@ -150,11 +181,14 @@ export default function ShareDialog({
         ) : isShared ? (
           <div className="space-y-4">
             <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-              <p className="text-sm text-green-700 dark:text-green-300 font-medium mb-1">
-                Teilen ist aktiviert
+              <p className="text-sm text-green-700 dark:text-green-300 font-medium mb-1 flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                {sharedActId ? `"${sharedActName}" wird geteilt` : 'Ganzes Event wird geteilt'}
               </p>
               <p className="text-xs text-green-600 dark:text-green-400">
-                Jeder mit dem Link und Passwort kann diesen Gig sehen und bearbeiten
+                {sharedActId
+                  ? 'Der Act kann mit dem Link und Passwort bearbeitet werden'
+                  : 'Das gesamte Event kann mit dem Link und Passwort bearbeitet werden'}
               </p>
             </div>
 
@@ -220,6 +254,32 @@ export default function ShareDialog({
             {error && (
               <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
                 {error}
+              </div>
+            )}
+
+            {/* Scope Selection - only show if there are acts */}
+            {allActs.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                  Was teilen?
+                </label>
+                <select
+                  value={selectedActId}
+                  onChange={(e) => setSelectedActId(e.target.value)}
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-900 dark:text-zinc-100 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="">Ganzes Event (Orga)</option>
+                  {allActs.map(act => (
+                    <option key={act.id} value={act.id}>
+                      {act.name} ({act.type})
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                  {selectedActId
+                    ? 'Nur dieser Act wird im Share-Link sichtbar sein'
+                    : 'Alle Acts und Songs werden im Share-Link sichtbar sein'}
+                </p>
               </div>
             )}
 

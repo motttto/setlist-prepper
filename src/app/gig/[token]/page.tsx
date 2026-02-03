@@ -65,6 +65,10 @@ export default function SharedGigPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [showMobileDetails, setShowMobileDetails] = useState(false);
 
+  // Act-share mode
+  const [isActShare, setIsActShare] = useState(false);
+  const [sharedActName, setSharedActName] = useState<string | null>(null);
+
   const isRemoteUpdateRef = useRef(false);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialLoadRef = useRef(true);
@@ -195,6 +199,9 @@ export default function SharedGigPage() {
       setCustomFields(Array.isArray(data.data.customFields) ? data.data.customFields : []);
       setUpdatedAt(data.data.updatedAt || '');
       setLastEditedBy(data.data.lastEditedBy || '');
+      // Act-share mode info
+      setIsActShare(data.data.isActShare || false);
+      setSharedActName(data.data.sharedActName || null);
       setIsAuthenticated(true);
       setShowNamePrompt(true);
       // Allow changes to trigger auto-save after initial load
@@ -745,8 +752,13 @@ export default function SharedGigPage() {
               </div>
               <div>
                 <h1 className="text-base sm:text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                  {title || 'Gig'}
+                  {isActShare && sharedActName ? sharedActName : (title || 'Gig')}
                 </h1>
+                {isActShare && (
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    {title}
+                  </p>
+                )}
               </div>
             </div>
             {/* Event Info - Desktop only */}
@@ -844,17 +856,21 @@ export default function SharedGigPage() {
             </div>
           )}
 
-          {/* Add Buttons - compact on mobile */}
+          {/* Add Buttons - compact on mobile, hide act buttons for act-shares */}
           <div className="flex-shrink-0 flex flex-wrap gap-1.5 sm:gap-2 mb-2 sm:mb-4">
-            <Button onClick={() => addAct('band')} variant="secondary" size="sm" className="px-2 sm:px-3 bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/30 dark:hover:bg-cyan-900/50 border-cyan-300 dark:border-cyan-700">
-              <Users className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-              <span className="hidden sm:inline ml-1 text-cyan-700 dark:text-cyan-300">Band</span>
-            </Button>
-            <Button onClick={() => addAct('dj')} variant="secondary" size="sm" className="px-2 sm:px-3 bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/30 dark:hover:bg-cyan-900/50 border-cyan-300 dark:border-cyan-700">
-              <Disc3 className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-              <span className="hidden sm:inline ml-1 text-cyan-700 dark:text-cyan-300">DJ</span>
-            </Button>
-            <div className="w-px h-6 bg-zinc-300 dark:bg-zinc-600 self-center mx-1" />
+            {!isActShare && (
+              <>
+                <Button onClick={() => addAct('band')} variant="secondary" size="sm" className="px-2 sm:px-3 bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/30 dark:hover:bg-cyan-900/50 border-cyan-300 dark:border-cyan-700">
+                  <Users className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                  <span className="hidden sm:inline ml-1 text-cyan-700 dark:text-cyan-300">Band</span>
+                </Button>
+                <Button onClick={() => addAct('dj')} variant="secondary" size="sm" className="px-2 sm:px-3 bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/30 dark:hover:bg-cyan-900/50 border-cyan-300 dark:border-cyan-700">
+                  <Disc3 className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                  <span className="hidden sm:inline ml-1 text-cyan-700 dark:text-cyan-300">DJ</span>
+                </Button>
+                <div className="w-px h-6 bg-zinc-300 dark:bg-zinc-600 self-center mx-1" />
+              </>
+            )}
             <Button onClick={addSong} size="sm" className="px-2 sm:px-3">
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline ml-1">Song</span>

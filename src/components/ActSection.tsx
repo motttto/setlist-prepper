@@ -32,6 +32,7 @@ import {
   Music,
   Sparkles,
   GripVertical,
+  Share2,
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -42,6 +43,7 @@ interface ActSectionProps {
   onSelectSong: (songId: string) => void;
   selectedSongId: string | null;
   readonly?: boolean;
+  onShare?: (actId: string) => void;  // For sharing this specific act
 }
 
 const ACT_TYPE_ICONS: Record<string, React.ReactNode> = {
@@ -69,6 +71,7 @@ export default function ActSection({
   onSelectSong,
   selectedSongId,
   readonly = false,
+  onShare,
 }: ActSectionProps) {
   const [isCollapsed, setIsCollapsed] = useState(act.isCollapsed ?? false);
   const [isEditing, setIsEditing] = useState(false);
@@ -266,6 +269,15 @@ export default function ActSection({
         {/* Actions */}
         {!readonly && (
           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            {onShare && (
+              <button
+                onClick={() => onShare(act.id)}
+                className="p-1.5 text-zinc-400 hover:text-indigo-500 transition-colors"
+                title="Act teilen"
+              >
+                <Share2 className="w-4 h-4" />
+              </button>
+            )}
             <button
               onClick={() => setIsEditing(true)}
               className="p-1.5 text-zinc-400 hover:text-indigo-500 transition-colors"

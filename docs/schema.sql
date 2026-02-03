@@ -25,6 +25,7 @@ CREATE TABLE setlists (
   share_token TEXT UNIQUE,
   share_password_hash TEXT,
   is_shared BOOLEAN DEFAULT false,
+  shared_act_id TEXT DEFAULT NULL,  -- NULL = full event, Act-ID = only that act
   last_edited_by TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -107,3 +108,6 @@ CREATE POLICY "Users can manage own custom fields"
 
 -- Hinweis: Die App nutzt den Service Role Key für API-Zugriffe,
 -- daher sind die RLS-Policies hauptsächlich als zusätzliche Sicherheitsschicht gedacht.
+
+-- Migration: Add shared_act_id column (run this in Supabase SQL Editor)
+-- ALTER TABLE setlists ADD COLUMN IF NOT EXISTS shared_act_id TEXT DEFAULT NULL;

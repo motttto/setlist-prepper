@@ -29,7 +29,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const { id } = await params;
     const body = await request.json();
-    const { password } = body;
+    const { password, actId } = body;  // actId is optional - null means full event
 
     if (!password || password.length < 4) {
       return NextResponse.json(
@@ -61,6 +61,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         share_token: shareToken,
         share_password_hash: passwordHash,
         is_shared: true,
+        shared_act_id: actId || null,  // null = full event, actId = specific act
       })
       .eq('id', id)
       .eq('user_id', session.user.id);
@@ -83,6 +84,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         shareUrl,
         shareToken,
         isShared: true,
+        sharedActId: actId || null,
       },
     });
   } catch (error) {
@@ -111,6 +113,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         share_token: null,
         share_password_hash: null,
         is_shared: false,
+        shared_act_id: null,
       })
       .eq('id', id)
       .eq('user_id', session.user.id);
@@ -146,7 +149,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const { data, error } = await supabase
       .from('setlists')
-      .select('share_token, is_shared')
+      .select('share_token, is_shared, shared_act_id, encrypted_data')
       .eq('id', id)
       .eq('user_id', session.user.id)
       .single();
@@ -160,10 +163,33 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const baseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
     const shareUrl = data.share_token ? `${baseUrl}/gig/${data.share_token}` : null;
 
+    // Get act name if sharing specific act
+    let sharedActName: string | null = null;
+    if (data.shared_act_id && data.encrypted_data) {
+      try {
+        const eventData = typeof data.encrypted_data === 'string'
+          ? JSON.parse(data.encrypted_data)
+          : data.encrypted_data;
+        if (eventData.stages) {
+          for (const stage of eventData.stages) {
+            const act = stage.acts?.find((a: { id: string }) => a.id === data.shared_act_id);
+            if (act) {
+              sharedActName = act.name;
+              break;
+            }
+          }
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
+
     return NextResponse.json({
       data: {
         isShared: data.is_shared || false,
         shareUrl,
+        sharedActId: data.shared_act_id || null,
+        sharedActName,
       },
     });
   } catch (error) {
