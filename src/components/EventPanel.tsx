@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Event, Stage, Act, Song, CustomField, ActType, SongType } from '@/types';
 import StageTabs from './StageTabs';
@@ -78,6 +78,9 @@ export default function EventPanel({
   const initialLoadRef = useRef(true);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const AUTO_SAVE_DELAY = 2000;
+
+  // Memoize edit dialog data to prevent infinite re-renders
+  const editDialogData = useMemo(() => ({ title, eventDate, startTime, venue }), [title, eventDate, startTime, venue]);
 
   // Sync state when event changes
   useEffect(() => {
@@ -487,7 +490,7 @@ export default function EventPanel({
         isOpen={isEditDialogOpen}
         onClose={() => setIsEditDialogOpen(false)}
         onSave={handleEditDialogSave}
-        initialData={{ title, eventDate, startTime, venue }}
+        initialData={editDialogData}
       />
 
       {error && (

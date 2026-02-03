@@ -64,6 +64,7 @@ export default function GigEditDialog({
             Gig bearbeiten
           </h2>
           <button
+            type="button"
             onClick={onClose}
             className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
           >
@@ -106,10 +107,10 @@ export default function GigEditDialog({
 
         {/* Actions */}
         <div className="flex justify-end gap-3 mt-6">
-          <Button variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose}>
             Abbrechen
           </Button>
-          <Button onClick={handleSave}>
+          <Button type="button" onClick={handleSave}>
             Speichern
           </Button>
         </div>
