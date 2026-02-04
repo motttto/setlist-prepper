@@ -516,10 +516,13 @@ export default function SharedGigPage() {
           console.log('[AutoSave] Conflict detected, updating updatedAt and retrying...');
           updatedAtRef.current = data.serverUpdatedAt;
           setUpdatedAt(data.serverUpdatedAt);
-          // Don't show conflict UI - just retry on next auto-save cycle
+          // Don't show conflict UI - just retry immediately
           setSaveStatus('idle');
-          // Trigger immediate retry
-          needsImmediateSaveRef.current = true;
+          setIsSaving(false);
+          // Schedule immediate retry (can't call performAutoSave directly due to recursion)
+          setTimeout(() => {
+            performAutoSave();
+          }, IMMEDIATE_SAVE_DELAY);
           return;
         } else if (data.code === 'CONFLICT') {
           // Conflict without serverUpdatedAt - show error
