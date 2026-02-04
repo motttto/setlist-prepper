@@ -109,12 +109,14 @@ function mergeActIntoStages(originalStages: StageData[], updatedStages: StageDat
 
 // Rebuild stages structure from flat songs array
 // This preserves the original stage/act structure while updating song data
-// and handles new songs added via the shared gig interface
+// and handles: new songs, deleted songs, and reordering
 function rebuildStagesFromSongs(originalStages: StageData[], flatSongs: SongData[]): StageData[] {
   // Create a map of song updates by ID
   const songUpdates = new Map<string, SongData>();
   const actUpdates = new Map<string, { name: string; type: string }>();
-  const processedSongIds = new Set<string>();
+
+  // Track which song IDs exist in the flat array (for DELETE detection)
+  const existingSongIds = new Set<string>();
 
   // First pass: categorize songs and acts
   for (const song of flatSongs) {
@@ -126,6 +128,7 @@ function rebuildStagesFromSongs(originalStages: StageData[], flatSongs: SongData
       });
     } else {
       songUpdates.set(song.id, song);
+      existingSongIds.add(song.id);
     }
   }
 
@@ -135,32 +138,37 @@ function rebuildStagesFromSongs(originalStages: StageData[], flatSongs: SongData
     acts: (stage.acts || []).map(act => {
       const actUpdate = actUpdates.get(act.id);
 
-      // Update existing songs and track which ones we've processed
-      const updatedSongs = (act.songs || []).map(song => {
-        processedSongIds.add(song.id);
-        const update = songUpdates.get(song.id);
-        if (update) {
-          // Remove act-specific fields that shouldn't be on songs
-          const { actType, ...songData } = update;
-          return songData as SongData;
-        }
-        return song;
-      });
-
-      // Find new songs that belong to this act (songs that appear after this act marker in flatSongs)
-      // We need to find the position of this act in flatSongs and get songs until the next act
+      // Find the position of this act in flatSongs to get the correct song order
       const actIndex = flatSongs.findIndex(s => s.id === act.id && s.type === 'act');
+
+      // Get all songs that belong to this act from flatSongs (in order)
+      // This handles: ordering, new songs, and implicitly removes deleted songs
+      const updatedSongs: SongData[] = [];
+
       if (actIndex !== -1) {
         // Get songs between this act and the next act (or end of list)
         for (let i = actIndex + 1; i < flatSongs.length; i++) {
           const song = flatSongs[i];
           if (song.type === 'act') break; // Stop at next act
-          if (!processedSongIds.has(song.id)) {
-            // This is a new song - add it
-            processedSongIds.add(song.id);
-            const { actType, ...songData } = song;
-            updatedSongs.push(songData as SongData);
+
+          // Remove act-specific fields that shouldn't be on songs
+          const { actType, ...songData } = song;
+          updatedSongs.push(songData as SongData);
+        }
+      } else {
+        // Act not found in flatSongs - keep original songs that still exist
+        // (This shouldn't normally happen, but handle it gracefully)
+        for (const song of (act.songs || [])) {
+          if (existingSongIds.has(song.id)) {
+            const update = songUpdates.get(song.id);
+            if (update) {
+              const { actType, ...songData } = update;
+              updatedSongs.push(songData as SongData);
+            } else {
+              updatedSongs.push(song);
+            }
           }
+          // Songs not in existingSongIds are deleted - skip them
         }
       }
 
