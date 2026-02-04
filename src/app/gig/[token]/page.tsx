@@ -65,6 +65,9 @@ export default function SharedGigPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [showMobileDetails, setShowMobileDetails] = useState(false);
 
+  // Real setlist ID for realtime channel sync with owner
+  const [setlistId, setSetlistId] = useState<string | null>(null);
+
   // Act-share mode
   const [isActShare, setIsActShare] = useState(false);
   const [sharedActName, setSharedActName] = useState<string | null>(null);
@@ -74,7 +77,9 @@ export default function SharedGigPage() {
   const isRemoteUpdateRef = useRef(false);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialLoadRef = useRef(true);
+  const needsImmediateSaveRef = useRef(false);
   const AUTO_SAVE_DELAY = 2000;
+  const IMMEDIATE_SAVE_DELAY = 300; // Fast save after broadcast so DB stays current
 
   const handleRemoteOperation = useCallback((operation: SetlistOperation) => {
     isRemoteUpdateRef.current = true;
@@ -146,6 +151,11 @@ export default function SharedGigPage() {
             break;
         }
         break;
+
+      case 'SYNC_SAVED':
+        // Another client saved successfully - update our updatedAt to avoid 409 conflicts
+        setUpdatedAt(operation.updatedAt);
+        break;
     }
 
     setTimeout(() => {
@@ -154,12 +164,18 @@ export default function SharedGigPage() {
   }, []); // Removed selectedSongId dependency - use functional update for setSelectedSongId
 
   const { presenceUsers, isConnected, broadcastOperation, updatePresence } = useRealtimeSetlist({
-    setlistId: `shared:${token}`,
+    setlistId: setlistId || '',
     editorId: sessionId,
     editorName: editorName || 'Unbekannt',
     onRemoteOperation: handleRemoteOperation,
-    enabled: isAuthenticated && !showNamePrompt,
+    enabled: isAuthenticated && !showNamePrompt && !!setlistId,
   });
+
+  // Wrap broadcastOperation to also trigger immediate DB save
+  const broadcast = useCallback((operation: Parameters<typeof broadcastOperation>[0]) => {
+    needsImmediateSaveRef.current = true;
+    broadcastOperation(operation);
+  }, [broadcastOperation]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -196,6 +212,7 @@ export default function SharedGigPage() {
 
       initialLoadRef.current = true;
       setStoredPassword(password);
+      setSetlistId(data.data.id);
       setTitle(data.data.title);
       setEventDate(data.data.eventDate || '');
       setStartTime(data.data.startTime || '');
@@ -249,7 +266,7 @@ export default function SharedGigPage() {
     const newSong = createEmptySong(songs.length + 1, 'song');
     setSongs([...songs, newSong]);
     setSelectedSongId(newSong.id);
-    broadcastOperation({
+    broadcast({
       type: 'ADD_SONG',
       song: newSong,
       position: songs.length,
@@ -260,7 +277,7 @@ export default function SharedGigPage() {
     const newSong = createEmptySong(songs.length + 1, 'pause');
     setSongs([...songs, newSong]);
     setSelectedSongId(newSong.id);
-    broadcastOperation({
+    broadcast({
       type: 'ADD_SONG',
       song: newSong,
       position: songs.length,
@@ -271,7 +288,7 @@ export default function SharedGigPage() {
     const newSong = createEmptySong(songs.length + 1, 'encore');
     setSongs([...songs, newSong]);
     setSelectedSongId(newSong.id);
-    broadcastOperation({
+    broadcast({
       type: 'ADD_SONG',
       song: newSong,
       position: songs.length,
@@ -307,7 +324,7 @@ export default function SharedGigPage() {
     };
     setSongs([...songs, newAct]);
     setSelectedSongId(newAct.id);
-    broadcastOperation({
+    broadcast({
       type: 'ADD_SONG',
       song: newAct,
       position: songs.length,
@@ -350,7 +367,7 @@ export default function SharedGigPage() {
           const newCustom = updatedSong.customFields || {};
           for (const key of Object.keys(newCustom)) {
             if (oldCustom[key] !== newCustom[key]) {
-              broadcastOperation({
+              broadcast({
                 type: 'UPDATE_SONG',
                 songId: updatedSong.id,
                 field: `customFields.${key}`,
@@ -359,7 +376,7 @@ export default function SharedGigPage() {
             }
           }
         } else if (JSON.stringify(oldSong[field]) !== JSON.stringify(updatedSong[field])) {
-          broadcastOperation({
+          broadcast({
             type: 'UPDATE_SONG',
             songId: updatedSong.id,
             field,
@@ -387,7 +404,7 @@ export default function SharedGigPage() {
       setSelectedSongId(updatedSongs.length > 0 ? updatedSongs[0].id : null);
     }
 
-    broadcastOperation({
+    broadcast({
       type: 'DELETE_SONG',
       songId,
     });
@@ -413,7 +430,7 @@ export default function SharedGigPage() {
     setSongs(updatedSongs);
     setSelectedSongId(duplicatedSong.id);
 
-    broadcastOperation({
+    broadcast({
       type: 'ADD_SONG',
       song: duplicatedSong,
       position: songIndex + 2,
@@ -427,7 +444,7 @@ export default function SharedGigPage() {
     const newMutedState = !song.muted;
     setSongs(songs.map((s) => (s.id === songId ? { ...s, muted: newMutedState } : s)));
 
-    broadcastOperation({
+    broadcast({
       type: 'UPDATE_SONG',
       songId,
       field: 'muted',
@@ -446,7 +463,7 @@ export default function SharedGigPage() {
         const newItems = arrayMove(items, oldIndex, newIndex);
         const reorderedItems = newItems.map((song, i) => ({ ...song, position: i + 1 }));
 
-        broadcastOperation({
+        broadcast({
           type: 'REORDER_SONGS',
           songIds: reorderedItems.map(s => s.id),
         });
@@ -499,6 +516,12 @@ export default function SharedGigPage() {
       setLastSavedAt(new Date());
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
+
+      // Broadcast the new updatedAt so other clients don't get 409 conflicts
+      broadcastOperation({
+        type: 'SYNC_SAVED',
+        updatedAt: data.updatedAt,
+      });
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Fehler beim Speichern');
       setSaveStatus('error');
@@ -516,10 +539,14 @@ export default function SharedGigPage() {
       clearTimeout(autoSaveTimeoutRef.current);
     }
 
+    // Use short delay after broadcast so DB stays current for new page loads
+    const delay = needsImmediateSaveRef.current ? IMMEDIATE_SAVE_DELAY : AUTO_SAVE_DELAY;
+    needsImmediateSaveRef.current = false;
+
     // Set new auto-save timeout
     autoSaveTimeoutRef.current = setTimeout(() => {
       performAutoSave();
-    }, AUTO_SAVE_DELAY);
+    }, delay);
 
     return () => {
       if (autoSaveTimeoutRef.current) {

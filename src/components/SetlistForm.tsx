@@ -84,7 +84,9 @@ export default function SetlistForm({
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialLoadRef = useRef(true);
   const skipNextAutoSaveRef = useRef(false);
+  const needsImmediateSaveRef = useRef(false);
   const AUTO_SAVE_DELAY = 2000;
+  const IMMEDIATE_SAVE_DELAY = 300; // Fast save after broadcast so DB stays current
 
   // Handle remote operations from other users
   const handleRemoteOperation = useCallback((operation: SetlistOperation) => {
@@ -152,6 +154,10 @@ export default function SetlistForm({
             break;
         }
         break;
+
+      case 'SYNC_SAVED':
+        // Another client saved - no action needed for owner (no optimistic locking here)
+        break;
     }
 
     // Reset flag after state update
@@ -168,6 +174,12 @@ export default function SetlistForm({
     onRemoteOperation: handleRemoteOperation,
     enabled: !!setlistId,
   });
+
+  // Wrap broadcastOperation to also trigger immediate DB save
+  const broadcast = useCallback((operation: Parameters<typeof broadcastOperation>[0]) => {
+    needsImmediateSaveRef.current = true;
+    broadcastOperation(operation);
+  }, [broadcastOperation]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -239,6 +251,14 @@ export default function SetlistForm({
       setLastSavedAt(new Date());
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
+
+      // Broadcast the new updatedAt so shared gig clients don't get 409 conflicts
+      if (data.data?.updatedAt) {
+        broadcastOperation({
+          type: 'SYNC_SAVED',
+          updatedAt: data.data.updatedAt,
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fehler beim Speichern');
       setSaveStatus('error');
@@ -262,10 +282,14 @@ export default function SetlistForm({
       clearTimeout(autoSaveTimeoutRef.current);
     }
 
+    // Use short delay after broadcast so DB stays current for new page loads
+    const delay = needsImmediateSaveRef.current ? IMMEDIATE_SAVE_DELAY : AUTO_SAVE_DELAY;
+    needsImmediateSaveRef.current = false;
+
     // Set new auto-save timeout
     autoSaveTimeoutRef.current = setTimeout(() => {
       performAutoSave();
-    }, AUTO_SAVE_DELAY);
+    }, delay);
 
     return () => {
       if (autoSaveTimeoutRef.current) {
@@ -302,7 +326,7 @@ export default function SetlistForm({
 
     // Broadcast to others
     if (setlistId) {
-      broadcastOperation({
+      broadcast({
         type: 'ADD_SONG',
         song: newSong,
         position: songs.length,
@@ -316,7 +340,7 @@ export default function SetlistForm({
     setSelectedSongId(newPause.id);
 
     if (setlistId) {
-      broadcastOperation({
+      broadcast({
         type: 'ADD_SONG',
         song: newPause,
         position: songs.length,
@@ -330,7 +354,7 @@ export default function SetlistForm({
     setSelectedSongId(newEncore.id);
 
     if (setlistId) {
-      broadcastOperation({
+      broadcast({
         type: 'ADD_SONG',
         song: newEncore,
         position: songs.length,
@@ -387,7 +411,7 @@ export default function SetlistForm({
           const newCustom = updatedSong.customFields || {};
           for (const key of Object.keys(newCustom)) {
             if (oldCustom[key] !== newCustom[key]) {
-              broadcastOperation({
+              broadcast({
                 type: 'UPDATE_SONG',
                 songId,
                 field: `customFields.${key}`,
@@ -396,7 +420,7 @@ export default function SetlistForm({
             }
           }
         } else if (JSON.stringify(oldSong[field]) !== JSON.stringify(updatedSong[field])) {
-          broadcastOperation({
+          broadcast({
             type: 'UPDATE_SONG',
             songId,
             field,
@@ -429,7 +453,7 @@ export default function SetlistForm({
 
     // Broadcast to others
     if (setlistId) {
-      broadcastOperation({
+      broadcast({
         type: 'DELETE_SONG',
         songId,
       });
@@ -458,7 +482,7 @@ export default function SetlistForm({
 
     // Broadcast to others
     if (setlistId) {
-      broadcastOperation({
+      broadcast({
         type: 'ADD_SONG',
         song: duplicatedSong,
         position: songIndex + 2,
@@ -475,7 +499,7 @@ export default function SetlistForm({
 
     // Broadcast to others
     if (setlistId) {
-      broadcastOperation({
+      broadcast({
         type: 'UPDATE_SONG',
         songId,
         field: 'muted',
@@ -498,7 +522,7 @@ export default function SetlistForm({
 
         // Broadcast reorder to others
         if (setlistId) {
-          broadcastOperation({
+          broadcast({
             type: 'REORDER_SONGS',
             songIds: reorderedItems.map(s => s.id),
           });

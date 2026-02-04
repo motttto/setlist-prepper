@@ -18,7 +18,8 @@ export type OperationType =
   | 'DELETE_SONG'
   | 'UPDATE_SONG'
   | 'REORDER_SONGS'
-  | 'UPDATE_METADATA';
+  | 'UPDATE_METADATA'
+  | 'SYNC_SAVED';
 
 // Base Operation Interface
 export interface BaseOperation {
@@ -58,12 +59,18 @@ export interface UpdateMetadataOperation extends BaseOperation {
   value: string | null;
 }
 
+export interface SyncSavedOperation extends BaseOperation {
+  type: 'SYNC_SAVED';
+  updatedAt: string;
+}
+
 export type SetlistOperation =
   | AddSongOperation
   | DeleteSongOperation
   | UpdateSongOperation
   | ReorderSongsOperation
-  | UpdateMetadataOperation;
+  | UpdateMetadataOperation
+  | SyncSavedOperation;
 
 // Channel Events
 export interface OperationEvent {
@@ -104,13 +111,15 @@ export type DeleteSongInput = Omit<DeleteSongOperation, 'userId' | 'userName' | 
 export type UpdateSongInput = Omit<UpdateSongOperation, 'userId' | 'userName' | 'timestamp'>;
 export type ReorderSongsInput = Omit<ReorderSongsOperation, 'userId' | 'userName' | 'timestamp'>;
 export type UpdateMetadataInput = Omit<UpdateMetadataOperation, 'userId' | 'userName' | 'timestamp'>;
+export type SyncSavedInput = Omit<SyncSavedOperation, 'userId' | 'userName' | 'timestamp'>;
 
 export type OperationInput =
   | AddSongInput
   | DeleteSongInput
   | UpdateSongInput
   | ReorderSongsInput
-  | UpdateMetadataInput;
+  | UpdateMetadataInput
+  | SyncSavedInput;
 
 // Realtime Hook Return Type
 export interface UseRealtimeSetlistReturn {
