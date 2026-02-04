@@ -135,17 +135,12 @@ function rebuildStagesFromSongs(originalStages: StageData[], flatSongs: SongData
       // Check if this act already existed
       const existingAct = existingActData.get(item.id);
 
-      // Create act from flatSongs data, preserving existing metadata
+      // Create act from flatSongs data
       currentAct = {
         id: item.id,
         name: item.title,
         type: (item.actType as string) || existingAct?.type || 'band',
         songs: [],
-        // Preserve other act metadata if it existed
-        ...(existingAct ? {
-          notes: existingAct.notes,
-          techRider: existingAct.techRider,
-        } : {})
       };
     } else if (currentAct) {
       // This is a song - add to current act
