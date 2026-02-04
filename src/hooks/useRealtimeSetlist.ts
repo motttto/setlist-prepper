@@ -43,6 +43,8 @@ export function useRealtimeSetlist({
 
   // Queue for operations that arrive before connection is ready
   const pendingOperationsRef = useRef<OperationInput[]>([]);
+  // Ref for synchronous connection check (state updates are async)
+  const isConnectedRef = useRef(false);
 
   useEffect(() => {
     if (!enabled || !setlistId) return;
@@ -106,6 +108,7 @@ export function useRealtimeSetlist({
     // Subscribe und Track Presence
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
+        isConnectedRef.current = true;
         setIsConnected(true);
 
         // Eigene Presence tracken
@@ -140,9 +143,11 @@ export function useRealtimeSetlist({
         }
       } else if (status === 'CHANNEL_ERROR') {
         console.error('[Realtime] Channel error');
+        isConnectedRef.current = false;
         setIsConnected(false);
       } else if (status === 'TIMED_OUT') {
         console.warn('[Realtime] Connection timed out');
+        isConnectedRef.current = false;
         setIsConnected(false);
       }
     });
@@ -153,6 +158,7 @@ export function useRealtimeSetlist({
     return () => {
       console.log('[Realtime] Unsubscribing from channel:', channelName);
       channel.unsubscribe();
+      isConnectedRef.current = false;
       setIsConnected(false);
     };
   }, [setlistId, editorId, editorName, enabled]); // Removed onRemoteOperation - using ref instead
@@ -160,7 +166,8 @@ export function useRealtimeSetlist({
   // Operation broadcasten
   const broadcastOperation = useCallback(
     (operation: OperationInput) => {
-      if (!channelRef.current || !isConnected) {
+      // Use ref for synchronous check (state updates are async and cause stale closures)
+      if (!channelRef.current || !isConnectedRef.current) {
         // Queue the operation to be sent when connected
         console.log('[Realtime] Queuing operation (not yet connected):', operation.type);
         pendingOperationsRef.current.push(operation);
@@ -182,7 +189,7 @@ export function useRealtimeSetlist({
 
       console.log('[Realtime] Broadcast operation:', fullOperation);
     },
-    [isConnected, editorId, editorName]
+    [editorId, editorName]
   );
 
   // Presence updaten (welcher Song/Feld wird bearbeitet)
@@ -209,7 +216,7 @@ export function useRealtimeSetlist({
         lastActivity: Date.now(),
       });
     },
-    [isConnected, editorId, editorName]
+    [editorId, editorName]
   );
 
   return {
