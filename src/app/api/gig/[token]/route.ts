@@ -109,11 +109,14 @@ function mergeActIntoStages(originalStages: StageData[], updatedStages: StageDat
 
 // Rebuild stages structure from flat songs array
 // This preserves the original stage/act structure while updating song data
+// and handles new songs added via the shared gig interface
 function rebuildStagesFromSongs(originalStages: StageData[], flatSongs: SongData[]): StageData[] {
   // Create a map of song updates by ID
   const songUpdates = new Map<string, SongData>();
   const actUpdates = new Map<string, { name: string; type: string }>();
+  const processedSongIds = new Set<string>();
 
+  // First pass: categorize songs and acts
   for (const song of flatSongs) {
     if (song.type === 'act') {
       // This is an act marker
@@ -126,27 +129,51 @@ function rebuildStagesFromSongs(originalStages: StageData[], flatSongs: SongData
     }
   }
 
-  // Rebuild stages with updated data
-  return originalStages.map(stage => ({
+  // Second pass: rebuild stages with updated data
+  const rebuiltStages = originalStages.map(stage => ({
     ...stage,
     acts: (stage.acts || []).map(act => {
       const actUpdate = actUpdates.get(act.id);
+
+      // Update existing songs and track which ones we've processed
+      const updatedSongs = (act.songs || []).map(song => {
+        processedSongIds.add(song.id);
+        const update = songUpdates.get(song.id);
+        if (update) {
+          // Remove act-specific fields that shouldn't be on songs
+          const { actType, ...songData } = update;
+          return songData as SongData;
+        }
+        return song;
+      });
+
+      // Find new songs that belong to this act (songs that appear after this act marker in flatSongs)
+      // We need to find the position of this act in flatSongs and get songs until the next act
+      const actIndex = flatSongs.findIndex(s => s.id === act.id && s.type === 'act');
+      if (actIndex !== -1) {
+        // Get songs between this act and the next act (or end of list)
+        for (let i = actIndex + 1; i < flatSongs.length; i++) {
+          const song = flatSongs[i];
+          if (song.type === 'act') break; // Stop at next act
+          if (!processedSongIds.has(song.id)) {
+            // This is a new song - add it
+            processedSongIds.add(song.id);
+            const { actType, ...songData } = song;
+            updatedSongs.push(songData as SongData);
+          }
+        }
+      }
+
       return {
         ...act,
         name: actUpdate?.name ?? act.name,
         type: actUpdate?.type ?? act.type,
-        songs: (act.songs || []).map(song => {
-          const update = songUpdates.get(song.id);
-          if (update) {
-            // Remove act-specific fields that shouldn't be on songs
-            const { actType, ...songData } = update;
-            return songData as SongData;
-          }
-          return song;
-        })
+        songs: updatedSongs
       };
     })
   }));
+
+  return rebuiltStages;
 }
 
 // POST /api/gig/[token] - Authentifizieren und Gig laden
