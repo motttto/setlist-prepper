@@ -79,19 +79,21 @@ export default function SetlistForm({
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [showMobileDetails, setShowMobileDetails] = useState(false);
 
-  // Ref to track if update came from remote
-  const isRemoteUpdateRef = useRef(false);
+  // Ref to track remote updates that should skip auto-save
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialLoadRef = useRef(true);
-  const skipNextAutoSaveRef = useRef(false);
   const needsImmediateSaveRef = useRef(false);
+  const skipAutoSaveCountRef = useRef(0); // Counter for pending remote updates
+  const isRemoteUpdateRef = useRef(false); // Flag to prevent re-broadcasting remote updates
   const AUTO_SAVE_DELAY = 2000;
   const IMMEDIATE_SAVE_DELAY = 300; // Fast save after broadcast so DB stays current
 
   // Handle remote operations from other users
   const handleRemoteOperation = useCallback((operation: SetlistOperation) => {
+    // Increment skip counter - the auto-save effect will decrement and skip
+    skipAutoSaveCountRef.current++;
+    // Set flag to prevent re-broadcasting (for updateSong function)
     isRemoteUpdateRef.current = true;
-    skipNextAutoSaveRef.current = true; // Skip auto-save for remote updates
 
     switch (operation.type) {
       case 'ADD_SONG':
@@ -160,7 +162,7 @@ export default function SetlistForm({
         break;
     }
 
-    // Reset flag after state update
+    // Reset the flag after state updates propagate
     setTimeout(() => {
       isRemoteUpdateRef.current = false;
     }, 0);
@@ -271,9 +273,9 @@ export default function SetlistForm({
   useEffect(() => {
     if (initialLoadRef.current || !setlistId) return;
 
-    // Skip auto-save if this was a remote update
-    if (skipNextAutoSaveRef.current) {
-      skipNextAutoSaveRef.current = false;
+    // Skip auto-save for remote updates (the sender saves, not the receiver)
+    if (skipAutoSaveCountRef.current > 0) {
+      skipAutoSaveCountRef.current--;
       return;
     }
 

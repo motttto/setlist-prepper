@@ -74,14 +74,18 @@ export default function SharedGigPage() {
   // Role: 'band' = can only edit songs, 'orga' = can edit everything
   const [shareRole, setShareRole] = useState<'band' | 'orga'>('band');
 
-  const isRemoteUpdateRef = useRef(false);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialLoadRef = useRef(true);
   const needsImmediateSaveRef = useRef(false);
+  const skipAutoSaveCountRef = useRef(0); // Counter for pending remote updates that should skip auto-save
+  const isRemoteUpdateRef = useRef(false); // Flag to prevent re-broadcasting remote updates
   const AUTO_SAVE_DELAY = 2000;
   const IMMEDIATE_SAVE_DELAY = 300; // Fast save after broadcast so DB stays current
 
   const handleRemoteOperation = useCallback((operation: SetlistOperation) => {
+    // Increment skip counter - the auto-save effect will decrement and skip
+    skipAutoSaveCountRef.current++;
+    // Set flag to prevent re-broadcasting (for updateSong function)
     isRemoteUpdateRef.current = true;
 
     switch (operation.type) {
@@ -158,6 +162,7 @@ export default function SharedGigPage() {
         break;
     }
 
+    // Reset the flag after state updates propagate
     setTimeout(() => {
       isRemoteUpdateRef.current = false;
     }, 0);
@@ -532,7 +537,13 @@ export default function SharedGigPage() {
 
   // Track changes and trigger auto-save (only for local changes, not remote)
   useEffect(() => {
-    if (initialLoadRef.current || !isAuthenticated || showNamePrompt || isRemoteUpdateRef.current) return;
+    if (initialLoadRef.current || !isAuthenticated || showNamePrompt) return;
+
+    // Skip auto-save for remote updates (the sender saves, not the receiver)
+    if (skipAutoSaveCountRef.current > 0) {
+      skipAutoSaveCountRef.current--;
+      return;
+    }
 
     // Clear existing timeout
     if (autoSaveTimeoutRef.current) {
