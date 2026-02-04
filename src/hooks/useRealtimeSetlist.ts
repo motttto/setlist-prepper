@@ -41,6 +41,9 @@ export function useRealtimeSetlist({
   const onRemoteOperationRef = useRef(onRemoteOperation);
   onRemoteOperationRef.current = onRemoteOperation;
 
+  // Queue for operations that arrive before connection is ready
+  const pendingOperationsRef = useRef<OperationInput[]>([]);
+
   useEffect(() => {
     if (!enabled || !setlistId) return;
 
@@ -116,6 +119,25 @@ export function useRealtimeSetlist({
         });
 
         console.log('[Realtime] Connected to channel:', channelName);
+
+        // Flush any pending operations that were queued before connection
+        if (pendingOperationsRef.current.length > 0) {
+          console.log('[Realtime] Flushing pending operations:', pendingOperationsRef.current.length);
+          for (const op of pendingOperationsRef.current) {
+            const fullOperation = {
+              ...op,
+              userId: editorId,
+              userName: editorName,
+              timestamp: Date.now(),
+            } as SetlistOperation;
+            channel.send({
+              type: 'broadcast',
+              event: 'operation',
+              payload: fullOperation,
+            });
+          }
+          pendingOperationsRef.current = [];
+        }
       } else if (status === 'CHANNEL_ERROR') {
         console.error('[Realtime] Channel error');
         setIsConnected(false);
@@ -139,7 +161,9 @@ export function useRealtimeSetlist({
   const broadcastOperation = useCallback(
     (operation: OperationInput) => {
       if (!channelRef.current || !isConnected) {
-        console.warn('[Realtime] Cannot broadcast - not connected');
+        // Queue the operation to be sent when connected
+        console.log('[Realtime] Queuing operation (not yet connected):', operation.type);
+        pendingOperationsRef.current.push(operation);
         return;
       }
 
