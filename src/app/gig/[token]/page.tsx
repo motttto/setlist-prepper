@@ -79,6 +79,7 @@ export default function SharedGigPage() {
   const needsImmediateSaveRef = useRef(false);
   const skipAutoSaveCountRef = useRef(0); // Counter for pending remote updates that should skip auto-save
   const isRemoteUpdateRef = useRef(false); // Flag to prevent re-broadcasting remote updates
+  const updatedAtRef = useRef(updatedAt); // Ref for synchronous access in auto-save
   const AUTO_SAVE_DELAY = 2000;
   const IMMEDIATE_SAVE_DELAY = 300; // Fast save after broadcast so DB stays current
 
@@ -158,6 +159,8 @@ export default function SharedGigPage() {
 
       case 'SYNC_SAVED':
         // Another client saved successfully - update our updatedAt to avoid 409 conflicts
+        // Update both state and ref (ref is used synchronously by pending auto-saves)
+        updatedAtRef.current = operation.updatedAt;
         setUpdatedAt(operation.updatedAt);
         break;
     }
@@ -225,6 +228,7 @@ export default function SharedGigPage() {
       // Ensure songs is always an array
       setSongs(Array.isArray(data.data.songs) ? data.data.songs : []);
       setCustomFields(Array.isArray(data.data.customFields) ? data.data.customFields : []);
+      updatedAtRef.current = data.data.updatedAt || '';
       setUpdatedAt(data.data.updatedAt || '');
       setLastEditedBy(data.data.lastEditedBy || '');
       // Act-share mode info
@@ -499,7 +503,7 @@ export default function SharedGigPage() {
           venue: venue || null,
           songs,
           editorName: editorName || 'Unbekannt',
-          expectedUpdatedAt: updatedAt,
+          expectedUpdatedAt: updatedAtRef.current,
         }),
       });
 
@@ -516,6 +520,7 @@ export default function SharedGigPage() {
         return;
       }
 
+      updatedAtRef.current = data.updatedAt;
       setUpdatedAt(data.updatedAt);
       setLastEditedBy(data.lastEditedBy);
       setLastSavedAt(new Date());
@@ -533,7 +538,7 @@ export default function SharedGigPage() {
     } finally {
       setIsSaving(false);
     }
-  }, [token, storedPassword, title, eventDate, startTime, venue, songs, editorName, updatedAt]);
+  }, [token, storedPassword, title, eventDate, startTime, venue, songs, editorName, broadcastOperation]);
 
   // Track changes and trigger auto-save (only for local changes, not remote)
   useEffect(() => {
@@ -587,6 +592,7 @@ export default function SharedGigPage() {
         setVenue(data.data.venue || '');
         // Ensure songs is always an array
         setSongs(Array.isArray(data.data.songs) ? data.data.songs : []);
+        updatedAtRef.current = data.data.updatedAt || '';
         setUpdatedAt(data.data.updatedAt || '');
         setLastEditedBy(data.data.lastEditedBy || '');
         setShareRole(data.data.shareRole || 'band');
