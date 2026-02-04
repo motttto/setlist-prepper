@@ -510,7 +510,19 @@ export default function SharedGigPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        if (data.code === 'CONFLICT') {
+        if (data.code === 'CONFLICT' && data.serverUpdatedAt) {
+          // Update our updatedAt with server's value and retry automatically
+          // This handles the case where we missed a SYNC_SAVED broadcast
+          console.log('[AutoSave] Conflict detected, updating updatedAt and retrying...');
+          updatedAtRef.current = data.serverUpdatedAt;
+          setUpdatedAt(data.serverUpdatedAt);
+          // Don't show conflict UI - just retry on next auto-save cycle
+          setSaveStatus('idle');
+          // Trigger immediate retry
+          needsImmediateSaveRef.current = true;
+          return;
+        } else if (data.code === 'CONFLICT') {
+          // Conflict without serverUpdatedAt - show error
           setHasConflict(true);
           setSaveError(data.error);
           setSaveStatus('error');
