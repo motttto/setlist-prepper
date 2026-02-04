@@ -108,80 +108,70 @@ function mergeActIntoStages(originalStages: StageData[], updatedStages: StageDat
 }
 
 // Rebuild stages structure from flat songs array
-// This preserves the original stage/act structure while updating song data
-// and handles: new songs, deleted songs, and reordering
+// This uses flatSongs as the source of truth for:
+// - Act order and which acts exist
+// - Song order within each act
+// - New acts, deleted acts, new songs, deleted songs
 function rebuildStagesFromSongs(originalStages: StageData[], flatSongs: SongData[]): StageData[] {
-  // Create a map of song updates by ID
-  const songUpdates = new Map<string, SongData>();
-  const actUpdates = new Map<string, { name: string; type: string }>();
-
-  // Track which song IDs exist in the flat array (for DELETE detection)
-  const existingSongIds = new Set<string>();
-
-  // First pass: categorize songs and acts
-  for (const song of flatSongs) {
-    if (song.type === 'act') {
-      // This is an act marker
-      actUpdates.set(song.id, {
-        name: song.title,
-        type: (song.actType as string) || 'band'
-      });
-    } else {
-      songUpdates.set(song.id, song);
-      existingSongIds.add(song.id);
+  // Get existing act data from original stages (for preserving act metadata)
+  const existingActData = new Map<string, ActData>();
+  for (const stage of originalStages) {
+    for (const act of (stage.acts || [])) {
+      existingActData.set(act.id, act);
     }
   }
 
-  // Second pass: rebuild stages with updated data
-  const rebuiltStages = originalStages.map(stage => ({
-    ...stage,
-    acts: (stage.acts || []).map(act => {
-      const actUpdate = actUpdates.get(act.id);
+  // Build acts array from flatSongs (this is the source of truth for order)
+  const acts: ActData[] = [];
+  let currentAct: ActData | null = null;
 
-      // Find the position of this act in flatSongs to get the correct song order
-      const actIndex = flatSongs.findIndex(s => s.id === act.id && s.type === 'act');
-
-      // Get all songs that belong to this act from flatSongs (in order)
-      // This handles: ordering, new songs, and implicitly removes deleted songs
-      const updatedSongs: SongData[] = [];
-
-      if (actIndex !== -1) {
-        // Get songs between this act and the next act (or end of list)
-        for (let i = actIndex + 1; i < flatSongs.length; i++) {
-          const song = flatSongs[i];
-          if (song.type === 'act') break; // Stop at next act
-
-          // Remove act-specific fields that shouldn't be on songs
-          const { actType, ...songData } = song;
-          updatedSongs.push(songData as SongData);
-        }
-      } else {
-        // Act not found in flatSongs - keep original songs that still exist
-        // (This shouldn't normally happen, but handle it gracefully)
-        for (const song of (act.songs || [])) {
-          if (existingSongIds.has(song.id)) {
-            const update = songUpdates.get(song.id);
-            if (update) {
-              const { actType, ...songData } = update;
-              updatedSongs.push(songData as SongData);
-            } else {
-              updatedSongs.push(song);
-            }
-          }
-          // Songs not in existingSongIds are deleted - skip them
-        }
+  for (const item of flatSongs) {
+    if (item.type === 'act') {
+      // Save previous act if exists
+      if (currentAct) {
+        acts.push(currentAct);
       }
 
-      return {
-        ...act,
-        name: actUpdate?.name ?? act.name,
-        type: actUpdate?.type ?? act.type,
-        songs: updatedSongs
-      };
-    })
-  }));
+      // Check if this act already existed
+      const existingAct = existingActData.get(item.id);
 
-  return rebuiltStages;
+      // Create act from flatSongs data, preserving existing metadata
+      currentAct = {
+        id: item.id,
+        name: item.title,
+        type: (item.actType as string) || existingAct?.type || 'band',
+        songs: [],
+        // Preserve other act metadata if it existed
+        ...(existingAct ? {
+          notes: existingAct.notes,
+          techRider: existingAct.techRider,
+        } : {})
+      };
+    } else if (currentAct) {
+      // This is a song - add to current act
+      // Remove act-specific fields that shouldn't be on songs
+      const { actType, ...songData } = item;
+      currentAct.songs.push(songData as SongData);
+    }
+  }
+
+  // Don't forget the last act
+  if (currentAct) {
+    acts.push(currentAct);
+  }
+
+  // For simplicity, put all acts in the first stage (or create one if none exist)
+  // This maintains compatibility with the flat list view in SharedGigPage
+  const stage = originalStages[0] || {
+    id: 'main-stage',
+    name: 'Main Stage',
+    acts: []
+  };
+
+  return [{
+    ...stage,
+    acts
+  }];
 }
 
 // POST /api/gig/[token] - Authentifizieren und Gig laden
