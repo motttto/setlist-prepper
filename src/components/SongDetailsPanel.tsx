@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Song, CustomField, CustomFieldType, TransitionType, ActType } from '@/types';
 import { Input, Textarea, Button } from './ui';
-import { Plus, X, Music, Coffee, Star, ExternalLink, ChevronDown, Trash2, Users, Disc3 } from 'lucide-react';
+import { Plus, X, Music, Coffee, Star, ExternalLink, ChevronDown, Trash2, Users, Disc3, Check } from 'lucide-react';
 
 interface SongDetailsPanelProps {
   song: Song | null;
@@ -23,6 +23,7 @@ export default function SongDetailsPanel({
   displayPosition,
 }: SongDetailsPanelProps) {
   const [newMediaLink, setNewMediaLink] = useState('');
+  const [linkSaved, setLinkSaved] = useState(false);
   const [showAddField, setShowAddField] = useState(false);
   const [newFieldName, setNewFieldName] = useState('');
   const [newFieldType, setNewFieldType] = useState<CustomFieldType>('text');
@@ -33,6 +34,7 @@ export default function SongDetailsPanel({
   useEffect(() => {
     if (prevSongIdRef.current !== song?.id) {
       setNewMediaLink('');
+      setLinkSaved(false);
       prevSongIdRef.current = song?.id;
     }
   }, [song?.id]);
@@ -70,6 +72,8 @@ export default function SongDetailsPanel({
         mediaLinks: [...mediaLinks, newMediaLink.trim()],
       });
       setNewMediaLink('');
+      setLinkSaved(true);
+      setTimeout(() => setLinkSaved(false), 2000);
     }
   };
 
@@ -229,7 +233,7 @@ export default function SongDetailsPanel({
                 <div className="flex items-center gap-2">
                   <Input
                     value={newMediaLink}
-                    onChange={(e) => setNewMediaLink(e.target.value)}
+                    onChange={(e) => { setNewMediaLink(e.target.value); setLinkSaved(false); }}
                     placeholder="Neuen Link hinzufügen..."
                     className="flex-1"
                     onKeyDown={(e) => e.key === 'Enter' && addMediaLink()}
@@ -250,10 +254,17 @@ export default function SongDetailsPanel({
                     variant="secondary"
                     size="sm"
                     onClick={addMediaLink}
+                    disabled={!newMediaLink.trim()}
                   >
                     <Plus className="w-4 h-4" />
                   </Button>
                 </div>
+                {linkSaved && (
+                  <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Link gespeichert</span>
+                  </div>
+                )}
               </div>
             </div>
           </>
@@ -402,7 +413,7 @@ export default function SongDetailsPanel({
                 <div className="flex items-center gap-2">
                   <Input
                     value={newMediaLink}
-                    onChange={(e) => setNewMediaLink(e.target.value)}
+                    onChange={(e) => { setNewMediaLink(e.target.value); setLinkSaved(false); }}
                     placeholder="Neuen Link hinzufügen..."
                     className="flex-1"
                     onKeyDown={(e) => e.key === 'Enter' && addMediaLink()}
@@ -423,10 +434,17 @@ export default function SongDetailsPanel({
                     variant="secondary"
                     size="sm"
                     onClick={addMediaLink}
+                    disabled={!newMediaLink.trim()}
                   >
                     <Plus className="w-4 h-4" />
                   </Button>
                 </div>
+                {linkSaved && (
+                  <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Link gespeichert</span>
+                  </div>
+                )}
               </div>
             </div>
 
