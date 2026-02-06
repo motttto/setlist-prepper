@@ -430,6 +430,9 @@ export default function SharedGigPage() {
       ...songToDuplicate,
       id: uuidv4(),
       position: songIndex + 2,
+      mediaLinks: [...(songToDuplicate.mediaLinks || [])],
+      transitionTypes: [...(songToDuplicate.transitionTypes || [])],
+      customFields: { ...(songToDuplicate.customFields || {}) },
     };
 
     const newSongs = [
