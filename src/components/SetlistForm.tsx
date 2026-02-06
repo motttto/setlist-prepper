@@ -400,7 +400,7 @@ export default function SetlistForm({
   const updateSong = (songId: string, updatedSong: Song) => {
     // Find what changed
     const oldSong = songs.find(s => s.id === songId);
-    setSongs(songs.map((s) => (s.id === songId ? updatedSong : s)));
+    setSongs(prev => prev.map((s) => (s.id === songId ? updatedSong : s)));
 
     // Broadcast changes (skip if this was a remote update)
     if (setlistId && !isRemoteUpdateRef.current && oldSong) {
@@ -437,11 +437,11 @@ export default function SetlistForm({
 
   const updateSongDuration = (songId: string, minutes: string, seconds: string) => {
     const duration = `${minutes || '0'}:${seconds || '00'}`;
-    setSongs(songs.map((s) => (s.id === songId ? { ...s, duration } : s)));
+    setSongs(prev => prev.map((s) => (s.id === songId ? { ...s, duration } : s)));
   };
 
   const updateSongTitle = (songId: string, title: string) => {
-    setSongs(songs.map((s) => (s.id === songId ? { ...s, title } : s)));
+    setSongs(prev => prev.map((s) => (s.id === songId ? { ...s, title } : s)));
   };
 
   const deleteSong = (songId: string) => {
@@ -502,7 +502,7 @@ export default function SetlistForm({
     if (!song) return;
 
     const newMutedState = !song.muted;
-    setSongs(songs.map((s) => (s.id === songId ? { ...s, muted: newMutedState } : s)));
+    setSongs(prev => prev.map((s) => (s.id === songId ? { ...s, muted: newMutedState } : s)));
 
     // Broadcast to others
     if (setlistId) {

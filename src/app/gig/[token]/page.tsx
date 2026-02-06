@@ -367,7 +367,7 @@ export default function SharedGigPage() {
 
   const updateSong = (songId: string, updatedSong: Song) => {
     const oldSong = songs.find(s => s.id === songId);
-    setSongs(songs.map((s) => (s.id === songId ? updatedSong : s)));
+    setSongs(prev => prev.map((s) => (s.id === songId ? updatedSong : s)));
 
     if (!isRemoteUpdateRef.current && oldSong) {
       const fields = Object.keys(updatedSong) as (keyof Song)[];
@@ -457,7 +457,7 @@ export default function SharedGigPage() {
     if (!song) return;
 
     const newMutedState = !song.muted;
-    setSongs(songs.map((s) => (s.id === songId ? { ...s, muted: newMutedState } : s)));
+    setSongs(prev => prev.map((s) => (s.id === songId ? { ...s, muted: newMutedState } : s)));
 
     broadcast({
       type: 'UPDATE_SONG',
