@@ -407,6 +407,7 @@ function renderFullExport(
     const hasAnyContent = song.lyrics || song.visualDescription || song.lighting ||
       song.stageDirections || song.audioCues || song.transitions || song.timingBpm ||
       (song.transitionTypes && song.transitionTypes.length > 0) ||
+      (song.mediaLinks && song.mediaLinks.length > 0) ||
       (song.customFields && Object.values(song.customFields).some(v => v && v.trim()));
 
     // Estimate height for song header
@@ -507,6 +508,11 @@ function renderFullExport(
       // Lyrics
       if (song.lyrics) {
         renderDetailField('Text / Notizen', song.lyrics);
+      }
+
+      // Media Links
+      if (song.mediaLinks && song.mediaLinks.length > 0) {
+        renderDetailField('Medien-Links', song.mediaLinks.join('\n'));
       }
 
       // Custom fields
