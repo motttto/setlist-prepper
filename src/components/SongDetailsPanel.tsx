@@ -237,6 +237,7 @@ export default function SongDetailsPanel({
                     placeholder="Neuen Link hinzufügen..."
                     className="flex-1"
                     onKeyDown={(e) => e.key === 'Enter' && addMediaLink()}
+                    onBlur={addMediaLink}
                   />
                   {newMediaLink.trim() && (
                     <a
@@ -417,6 +418,7 @@ export default function SongDetailsPanel({
                     placeholder="Neuen Link hinzufügen..."
                     className="flex-1"
                     onKeyDown={(e) => e.key === 'Enter' && addMediaLink()}
+                    onBlur={addMediaLink}
                   />
                   {newMediaLink.trim() && (
                     <a
