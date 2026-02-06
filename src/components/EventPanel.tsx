@@ -369,12 +369,12 @@ export default function EventPanel({
     setVenue(data.venue);
   };
 
-  // Flatten songs for PDF export
+  // Flatten songs for PDF export (exclude muted songs)
   const getAllSongs = (): Song[] => {
     const songs: Song[] = [];
     for (const stage of stages) {
       for (const act of stage.acts) {
-        songs.push(...act.songs);
+        songs.push(...act.songs.filter(s => !s.muted));
       }
     }
     return songs;

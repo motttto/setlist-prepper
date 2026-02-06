@@ -250,10 +250,14 @@ function renderTracklist(
   doc.setTextColor(0, 0, 0);
   y += 5;
 
-  // Songs
+  // Songs - use global position counter instead of per-act song.position
+  let globalPosition = 0;
   doc.setFont('helvetica', 'normal');
   songs.forEach((song, index) => {
     const songType = song.type || 'song';
+    if (!song.muted && songType === 'song') {
+      globalPosition++;
+    }
     const rowHeight = 7;
 
     check(rowHeight);
@@ -273,10 +277,10 @@ function renderTracklist(
     doc.setTextColor(100, 100, 100);
     doc.text(timestamps[index], margin, y);
 
-    // Position number
+    // Position number (global sequential)
     if (songType === 'song') {
       doc.setTextColor(60, 60, 60);
-      doc.text(`${song.position}`, margin + 18, y);
+      doc.text(`${globalPosition}`, margin + 18, y);
     } else if (songType === 'pause') {
       doc.setTextColor(180, 130, 50);
       doc.text('—', margin + 18, y);
@@ -390,8 +394,13 @@ function renderFullExport(
     y += 1.5;
   };
 
+  // Use global position counter instead of per-act song.position
+  let globalPosition = 0;
   songs.forEach((song, index) => {
     const songType = song.type || 'song';
+    if (!song.muted && songType === 'song') {
+      globalPosition++;
+    }
 
     // Check if this song has any details worth showing
     const hasDetails = songType === 'song' || songType === 'encore';
@@ -422,10 +431,10 @@ function renderFullExport(
     doc.setTextColor(100, 100, 100);
     doc.text(timestamps[index], margin + 1, y);
 
-    // Position number
+    // Position number (global sequential)
     if (songType === 'song') {
       doc.setTextColor(60, 60, 60);
-      doc.text(`${song.position}`, margin + 18, y);
+      doc.text(`${globalPosition}`, margin + 18, y);
     } else if (songType === 'pause') {
       doc.setTextColor(180, 130, 50);
       doc.text('—', margin + 18, y);
