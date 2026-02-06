@@ -22,7 +22,7 @@ import { Song, CustomField, CustomFieldType, SongType, ActType } from '@/types';
 import SongListItem from '@/components/SongListItem';
 import SongDetailsPanel from '@/components/SongDetailsPanel';
 import { Button, Input, Card } from '@/components/ui';
-import { Plus, Lock, Music2, Coffee, Star, Clock, AlertTriangle, RefreshCw, User, Loader2, Cloud, CloudOff, Settings, FileDown, X, MapPin, Calendar, Users, Disc3 } from 'lucide-react';
+import { Plus, Lock, Music2, Coffee, Star, Clock, AlertTriangle, RefreshCw, User, Loader2, Cloud, CloudOff, Settings, FileDown, X, MapPin, Calendar, Users, Disc3, Share2, Check } from 'lucide-react';
 import { exportSetlistToPdf } from '@/lib/pdfExport';
 import PdfExportDialog, { PdfExportMode } from '@/components/PdfExportDialog';
 import { useRealtimeSetlist } from '@/hooks/useRealtimeSetlist';
@@ -66,6 +66,7 @@ export default function SharedGigPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [showMobileDetails, setShowMobileDetails] = useState(false);
   const [showPdfDialog, setShowPdfDialog] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // Real setlist ID for realtime channel sync with owner
   const [setlistId, setSetlistId] = useState<string | null>(null);
@@ -886,6 +887,20 @@ export default function SharedGigPage() {
               </span>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* Share Link Button */}
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  setLinkCopied(true);
+                  setTimeout(() => setLinkCopied(false), 2000);
+                }}
+                className="px-2 sm:px-3"
+              >
+                {linkCopied ? <Check className="w-4 h-4 text-green-500" /> : <Share2 className="w-4 h-4" />}
+                <span className="hidden sm:inline ml-1">{linkCopied ? 'Kopiert!' : 'Teilen'}</span>
+              </Button>
               {/* PDF Export Button - icon only on mobile */}
               {songs.length > 0 && (
                 <Button
