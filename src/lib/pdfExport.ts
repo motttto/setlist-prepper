@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { Song } from '@/types';
+import { PdfExportMode } from '@/components/PdfExportDialog';
 
 interface ExportOptions {
   title: string;
@@ -7,7 +8,36 @@ interface ExportOptions {
   startTime?: string;
   venue?: string;
   songs: Song[];
+  mode?: PdfExportMode;
 }
+
+// Transition labels for full export
+const transitionLabels: Record<string, string> = {
+  smooth: 'Fließend',
+  hard: 'Abrupt',
+  fadeOut: 'Ausfaden',
+  fadeIn: 'Einfaden',
+  crossfade: 'Crossfade',
+  segue: 'Segue',
+  applause: 'Applaus-Pause',
+  talk: 'Ansage',
+  silence: 'Stille',
+  medley: 'Medley',
+};
+
+// Transition symbols for tracklist
+const transitionSymbols: Record<string, string> = {
+  smooth: '→',
+  hard: '|',
+  fadeOut: '↘',
+  fadeIn: '↗',
+  crossfade: '⟷',
+  segue: '»',
+  applause: '👏',
+  talk: '🎤',
+  silence: '…',
+  medley: '∞',
+};
 
 export function exportSetlistToPdf({
   title,
@@ -15,6 +45,7 @@ export function exportSetlistToPdf({
   startTime,
   venue,
   songs,
+  mode = 'tracklist',
 }: ExportOptions): void {
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -36,6 +67,12 @@ export function exportSetlistToPdf({
       return true;
     }
     return false;
+  };
+
+  // Helper: wrap text and return lines
+  const wrapText = (text: string, maxWidth: number, fontSize: number): string[] => {
+    doc.setFontSize(fontSize);
+    return doc.splitTextToSize(text, maxWidth);
   };
 
   // Calculate cumulative timestamps
@@ -100,7 +137,9 @@ export function exportSetlistToPdf({
     return `${mins} Min`;
   };
 
-  // Header
+  // ========================
+  // HEADER (shared for both modes)
+  // ========================
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
   doc.text(title || 'Setlist', margin, y);
@@ -129,7 +168,8 @@ export function exportSetlistToPdf({
   const songCount = songs.filter(s => (s.type || 'song') === 'song').length;
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
-  doc.text(`${songCount} Songs · ${calculateTotalDuration()}`, margin, y);
+  const modeLabel = mode === 'full' ? ' · Vollständiger Export' : '';
+  doc.text(`${songCount} Songs · ${calculateTotalDuration()}${modeLabel}`, margin, y);
   doc.setTextColor(0, 0, 0);
   y += 8;
 
@@ -137,6 +177,67 @@ export function exportSetlistToPdf({
   doc.setDrawColor(200, 200, 200);
   doc.line(margin, y, pageWidth - margin, y);
   y += 6;
+
+  if (mode === 'tracklist') {
+    // ========================
+    // TRACKLIST MODE (original)
+    // ========================
+    renderTracklist(doc, songs, timestamps, margin, contentWidth, pageWidth, pageHeight, y, checkPageBreak);
+    y = (doc as unknown as { lastY: number }).lastY || y; // won't be used after this
+  } else {
+    // ========================
+    // FULL EXPORT MODE
+    // ========================
+    renderFullExport(doc, songs, timestamps, margin, contentWidth, pageWidth, pageHeight, y, checkPageBreak, wrapText);
+  }
+
+  // Footer with generation timestamp (on last page)
+  // Get current y from internal tracking
+  const currentY = y;
+  const footerY = Math.max(currentY + 5, pageHeight - margin - 5);
+  if (footerY > pageHeight - margin) {
+    doc.addPage();
+  }
+
+  doc.setFontSize(7);
+  doc.setTextColor(150, 150, 150);
+  doc.setFont('helvetica', 'normal');
+  const now = new Date();
+  const footerText = `Erstellt am ${now.toLocaleDateString('de-DE')} um ${now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} · Setlist Prepper`;
+  // Place footer at bottom of last page
+  doc.text(footerText, margin, pageHeight - margin);
+
+  // Save
+  const modeSuffix = mode === 'full' ? '_komplett' : '';
+  const filename = `${title || 'Setlist'}${modeSuffix}_${eventDate || now.toISOString().split('T')[0]}.pdf`;
+  doc.save(filename.replace(/[^a-zA-Z0-9äöüÄÖÜß\-_.]/g, '_'));
+}
+
+// ========================
+// TRACKLIST RENDERER
+// ========================
+function renderTracklist(
+  doc: jsPDF,
+  songs: Song[],
+  timestamps: string[],
+  margin: number,
+  contentWidth: number,
+  pageWidth: number,
+  pageHeight: number,
+  startY: number,
+  checkPageBreak: (h: number) => boolean,
+) {
+  let y = startY;
+
+  // Reassign checkPageBreak to use local y
+  const check = (neededHeight: number) => {
+    if (y + neededHeight > pageHeight - margin) {
+      doc.addPage();
+      y = margin;
+      return true;
+    }
+    return false;
+  };
 
   // Column headers
   doc.setFontSize(8);
@@ -155,14 +256,14 @@ export function exportSetlistToPdf({
     const songType = song.type || 'song';
     const rowHeight = 7;
 
-    checkPageBreak(rowHeight);
+    check(rowHeight);
 
     // Background for pause/encore
     if (songType === 'pause') {
-      doc.setFillColor(255, 247, 237); // amber-50
+      doc.setFillColor(255, 247, 237);
       doc.rect(margin, y - 4, contentWidth, rowHeight, 'F');
     } else if (songType === 'encore') {
-      doc.setFillColor(250, 245, 255); // purple-50
+      doc.setFillColor(250, 245, 255);
       doc.rect(margin, y - 4, contentWidth, rowHeight, 'F');
     }
 
@@ -216,43 +317,218 @@ export function exportSetlistToPdf({
     if (song.transitionTypes && song.transitionTypes.length > 0) {
       doc.setFontSize(7);
       doc.setTextColor(150, 150, 150);
-      const transitionMap: Record<string, string> = {
-        smooth: '→',
-        hard: '|',
-        fadeOut: '↘',
-        fadeIn: '↗',
-        crossfade: '⟷',
-        segue: '»',
-        applause: '👏',
-        talk: '🎤',
-        silence: '…',
-        medley: '∞',
-      };
-      const transitionSymbols = song.transitionTypes.map(t => transitionMap[t] || t).join('');
-      doc.text(transitionSymbols, pageWidth - margin - 5, y);
+      const symbols = song.transitionTypes.map(t => transitionSymbols[t] || t).join('');
+      doc.text(symbols, pageWidth - margin - 5, y);
     }
 
     y += rowHeight;
     doc.setTextColor(0, 0, 0);
   });
 
-  // Footer with generation timestamp
+  // Draw footer separator
   y += 5;
-  checkPageBreak(15);
+  if (y + 15 > pageHeight - margin) {
+    doc.addPage();
+    y = margin;
+  }
   doc.setDrawColor(200, 200, 200);
   doc.line(margin, y, pageWidth - margin, y);
-  y += 5;
+}
 
-  doc.setFontSize(7);
-  doc.setTextColor(150, 150, 150);
-  const now = new Date();
-  doc.text(
-    `Erstellt am ${now.toLocaleDateString('de-DE')} um ${now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} · Setlist Prepper`,
-    margin,
-    y
-  );
+// ========================
+// FULL EXPORT RENDERER
+// ========================
+function renderFullExport(
+  doc: jsPDF,
+  songs: Song[],
+  timestamps: string[],
+  margin: number,
+  contentWidth: number,
+  pageWidth: number,
+  pageHeight: number,
+  startY: number,
+  _checkPageBreak: (h: number) => boolean,
+  wrapText: (text: string, maxWidth: number, fontSize: number) => string[],
+) {
+  let y = startY;
 
-  // Save
-  const filename = `${title || 'Setlist'}_${eventDate || now.toISOString().split('T')[0]}.pdf`;
-  doc.save(filename.replace(/[^a-zA-Z0-9äöüÄÖÜß\-_.]/g, '_'));
+  const check = (neededHeight: number) => {
+    if (y + neededHeight > pageHeight - margin) {
+      doc.addPage();
+      y = margin;
+      return true;
+    }
+    return false;
+  };
+
+  // Detail field helper - renders a label + value block
+  const renderDetailField = (label: string, value: string, indent: number = 0) => {
+    if (!value || !value.trim()) return;
+
+    const fieldX = margin + 4 + indent;
+    const maxWidth = contentWidth - 8 - indent;
+
+    // Label
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(100, 100, 100);
+
+    check(8);
+    doc.text(label, fieldX, y);
+    y += 3.5;
+
+    // Value (wrapped)
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(50, 50, 50);
+    const lines = wrapText(value, maxWidth, 8);
+    for (const line of lines) {
+      check(4);
+      doc.text(line, fieldX, y);
+      y += 3.5;
+    }
+    y += 1.5;
+  };
+
+  songs.forEach((song, index) => {
+    const songType = song.type || 'song';
+
+    // Check if this song has any details worth showing
+    const hasDetails = songType === 'song' || songType === 'encore';
+    const hasAnyContent = song.lyrics || song.visualDescription || song.lighting ||
+      song.stageDirections || song.audioCues || song.transitions || song.timingBpm ||
+      (song.transitionTypes && song.transitionTypes.length > 0) ||
+      (song.customFields && Object.values(song.customFields).some(v => v && v.trim()));
+
+    // Estimate height for song header
+    const headerHeight = hasDetails && hasAnyContent ? 28 : 10;
+    check(headerHeight);
+
+    // Song header background
+    if (songType === 'pause') {
+      doc.setFillColor(255, 247, 237);
+      doc.rect(margin, y - 4, contentWidth, 8, 'F');
+    } else if (songType === 'encore') {
+      doc.setFillColor(250, 245, 255);
+      doc.rect(margin, y - 4, contentWidth, 8, 'F');
+    } else if (songType === 'song') {
+      doc.setFillColor(245, 245, 250);
+      doc.rect(margin, y - 4, contentWidth, 8, 'F');
+    }
+
+    // Timestamp
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text(timestamps[index], margin + 1, y);
+
+    // Position number
+    if (songType === 'song') {
+      doc.setTextColor(60, 60, 60);
+      doc.text(`${song.position}`, margin + 18, y);
+    } else if (songType === 'pause') {
+      doc.setTextColor(180, 130, 50);
+      doc.text('—', margin + 18, y);
+    } else if (songType === 'encore') {
+      doc.setTextColor(130, 80, 180);
+      doc.text('★', margin + 18, y);
+    }
+
+    // Title
+    if (songType === 'pause') {
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(180, 130, 50);
+    } else if (songType === 'encore') {
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(130, 80, 180);
+    } else {
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 30, 30);
+    }
+
+    const displayTitle = song.title || (songType === 'pause' ? 'Pause' : songType === 'encore' ? 'Zugabe' : 'Ohne Titel');
+    doc.text(displayTitle, margin + 26, y);
+
+    // Duration on right side
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.setFontSize(9);
+    const durationInfo: string[] = [];
+    if (song.duration) durationInfo.push(song.duration);
+    if (song.timingBpm) durationInfo.push(`${song.timingBpm} BPM`);
+    if (durationInfo.length > 0) {
+      doc.text(durationInfo.join(' · '), pageWidth - margin - 1, y, { align: 'right' });
+    }
+
+    y += 6;
+
+    // Detail fields for songs/encores that have content
+    if (hasDetails && hasAnyContent) {
+      doc.setTextColor(0, 0, 0);
+
+      // Transitions
+      if (song.transitionTypes && song.transitionTypes.length > 0) {
+        const labels = song.transitionTypes.map(t => transitionLabels[t] || t).join(', ');
+        renderDetailField('Übergang', labels);
+      }
+      if (song.transitions) {
+        renderDetailField('Übergang-Details', song.transitions);
+      }
+
+      // Lighting
+      if (song.lighting) {
+        renderDetailField('Licht', song.lighting);
+      }
+
+      // Visual description
+      if (song.visualDescription) {
+        renderDetailField('Visuell', song.visualDescription);
+      }
+
+      // Stage directions
+      if (song.stageDirections) {
+        renderDetailField('Bühnenanweisungen', song.stageDirections);
+      }
+
+      // Audio cues
+      if (song.audioCues) {
+        renderDetailField('Audio-Cues', song.audioCues);
+      }
+
+      // Lyrics
+      if (song.lyrics) {
+        renderDetailField('Text / Notizen', song.lyrics);
+      }
+
+      // Custom fields
+      if (song.customFields) {
+        for (const [fieldName, value] of Object.entries(song.customFields)) {
+          if (value && value.trim()) {
+            renderDetailField(fieldName, value);
+          }
+        }
+      }
+
+      // Bottom separator for this song block
+      y += 1;
+      check(4);
+      doc.setDrawColor(220, 220, 220);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 4;
+    } else {
+      // Slim separator for pause/empty entries
+      y += 1;
+    }
+
+    doc.setTextColor(0, 0, 0);
+  });
+
+  // Draw footer separator
+  y += 3;
+  if (y + 15 > pageHeight - margin) {
+    doc.addPage();
+    y = margin;
+  }
+  doc.setDrawColor(200, 200, 200);
+  doc.line(margin, y, pageWidth - margin, y);
 }

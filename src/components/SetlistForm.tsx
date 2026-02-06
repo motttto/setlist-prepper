@@ -43,6 +43,7 @@ import SongDetailsPanel from './SongDetailsPanel';
 import { Button, Input, Card } from './ui';
 import { Plus, Save, ArrowLeft, Settings2, X, Clock, Coffee, Star, Check, Cloud, CloudOff, Loader2, FileDown, Music2 } from 'lucide-react';
 import { exportSetlistToPdf } from '@/lib/pdfExport';
+import PdfExportDialog, { PdfExportMode } from './PdfExportDialog';
 import Header from './Header';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -78,6 +79,7 @@ export default function SetlistForm({
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [showMobileDetails, setShowMobileDetails] = useState(false);
+  const [showPdfDialog, setShowPdfDialog] = useState(false);
 
   // Ref to track remote updates that should skip auto-save
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -694,7 +696,7 @@ export default function SetlistForm({
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => exportSetlistToPdf({ title, eventDate, startTime, venue, songs })}
+                  onClick={() => setShowPdfDialog(true)}
                 >
                   <FileDown className="w-4 h-4 mr-1 sm:mr-2" />
                   PDF
@@ -953,7 +955,7 @@ export default function SetlistForm({
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() => exportSetlistToPdf({ title, eventDate, startTime, venue, songs })}
+                onClick={() => setShowPdfDialog(true)}
               >
                 <FileDown className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">PDF Export</span>
@@ -975,6 +977,15 @@ export default function SetlistForm({
           </div>
         </div>
       </div>
+
+      {/* PDF Export Dialog */}
+      <PdfExportDialog
+        isOpen={showPdfDialog}
+        onClose={() => setShowPdfDialog(false)}
+        onExport={(mode: PdfExportMode) => {
+          exportSetlistToPdf({ title, eventDate, startTime, venue, songs, mode });
+        }}
+      />
     </div>
   );
 }

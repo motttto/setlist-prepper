@@ -27,6 +27,7 @@ import {
   Star,
 } from 'lucide-react';
 import { exportSetlistToPdf } from '@/lib/pdfExport';
+import PdfExportDialog, { PdfExportMode } from './PdfExportDialog';
 import { migrateToEventStructure, calculateEventDuration, countSongsInEvent } from '@/lib/eventMigration';
 
 interface EventPanelProps {
@@ -75,6 +76,7 @@ export default function EventPanel({
   const [showAddActMenu, setShowAddActMenu] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [sharePreselectedActId, setSharePreselectedActId] = useState<string | undefined>(undefined);
+  const [showPdfDialog, setShowPdfDialog] = useState(false);
   const initialLoadRef = useRef(true);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const AUTO_SAVE_DELAY = 2000;
@@ -417,7 +419,7 @@ export default function EventPanel({
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => exportSetlistToPdf({ title, eventDate, startTime, venue, songs: getAllSongs() })}
+              onClick={() => setShowPdfDialog(true)}
               className="px-2 sm:px-3"
             >
               <FileDown className="w-4 h-4" />
@@ -660,6 +662,15 @@ export default function EventPanel({
           preselectedActId={sharePreselectedActId}
         />
       )}
+
+      {/* PDF Export Dialog */}
+      <PdfExportDialog
+        isOpen={showPdfDialog}
+        onClose={() => setShowPdfDialog(false)}
+        onExport={(mode: PdfExportMode) => {
+          exportSetlistToPdf({ title, eventDate, startTime, venue, songs: getAllSongs(), mode });
+        }}
+      />
     </div>
   );
 }

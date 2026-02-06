@@ -24,6 +24,7 @@ import SongDetailsPanel from '@/components/SongDetailsPanel';
 import { Button, Input, Card } from '@/components/ui';
 import { Plus, Lock, Music2, Coffee, Star, Clock, AlertTriangle, RefreshCw, User, Loader2, Cloud, CloudOff, Settings, FileDown, X, MapPin, Calendar, Users, Disc3 } from 'lucide-react';
 import { exportSetlistToPdf } from '@/lib/pdfExport';
+import PdfExportDialog, { PdfExportMode } from '@/components/PdfExportDialog';
 import { useRealtimeSetlist } from '@/hooks/useRealtimeSetlist';
 import { PresenceIndicator } from '@/components/PresenceIndicator';
 import { SetlistOperation } from '@/lib/realtimeTypes';
@@ -64,6 +65,7 @@ export default function SharedGigPage() {
   const [fieldError, setFieldError] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [showMobileDetails, setShowMobileDetails] = useState(false);
+  const [showPdfDialog, setShowPdfDialog] = useState(false);
 
   // Real setlist ID for realtime channel sync with owner
   const [setlistId, setSetlistId] = useState<string | null>(null);
@@ -886,7 +888,7 @@ export default function SharedGigPage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => exportSetlistToPdf({ title, eventDate, startTime, venue, songs })}
+                  onClick={() => setShowPdfDialog(true)}
                   className="px-2 sm:px-3"
                 >
                   <FileDown className="w-4 h-4" />
@@ -1093,6 +1095,15 @@ export default function SharedGigPage() {
         </div>
 
       </main>
+
+      {/* PDF Export Dialog */}
+      <PdfExportDialog
+        isOpen={showPdfDialog}
+        onClose={() => setShowPdfDialog(false)}
+        onExport={(mode: PdfExportMode) => {
+          exportSetlistToPdf({ title, eventDate, startTime, venue, songs, mode });
+        }}
+      />
     </div>
   );
 }
