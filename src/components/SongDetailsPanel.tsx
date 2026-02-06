@@ -28,31 +28,14 @@ export default function SongDetailsPanel({
   const [newFieldType, setNewFieldType] = useState<CustomFieldType>('text');
   const [newDropdownOptions, setNewDropdownOptions] = useState('');
 
-  // Auto-save pending mediaLink when switching songs
-  const pendingLinkRef = useRef<{ songId: string; link: string; song: Song } | null>(null);
-
-  // Keep track of pending link for current song
+  // Clear media link input when switching songs
+  const prevSongIdRef = useRef<string | undefined>(song?.id);
   useEffect(() => {
-    // On song switch: save any pending link from previous song
-    const pending = pendingLinkRef.current;
-    if (pending && pending.link.trim() && pending.songId !== song?.id) {
-      onChange({
-        ...pending.song,
-        mediaLinks: [...(pending.song.mediaLinks || []), pending.link.trim()],
-      });
+    if (prevSongIdRef.current !== song?.id) {
+      setNewMediaLink('');
+      prevSongIdRef.current = song?.id;
     }
-    pendingLinkRef.current = null;
-    setNewMediaLink('');
-  }, [song?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Update pending link ref whenever input changes
-  useEffect(() => {
-    if (song && newMediaLink.trim()) {
-      pendingLinkRef.current = { songId: song.id, link: newMediaLink, song };
-    } else {
-      pendingLinkRef.current = null;
-    }
-  }, [newMediaLink, song]);
+  }, [song?.id]);
 
   if (!song) {
     return (
