@@ -87,6 +87,8 @@ export default function SetlistForm({
   const needsImmediateSaveRef = useRef(false);
   const skipAutoSaveCountRef = useRef(0); // Counter for pending remote updates
   const isRemoteUpdateRef = useRef(false); // Flag to prevent re-broadcasting remote updates
+  const songsRef = useRef(songs); // Ref for synchronous access in auto-save timeout
+  songsRef.current = songs;
   const AUTO_SAVE_DELAY = 2000;
   const IMMEDIATE_SAVE_DELAY = 300; // Fast save after broadcast so DB stays current
 
@@ -237,7 +239,7 @@ export default function SetlistForm({
         eventDate: eventDate || null,
         startTime: startTime || null,
         venue: venue || null,
-        songs,
+        songs: songsRef.current,
       };
 
       const response = await fetch(`/api/setlists/${setlistId}`, {
@@ -586,7 +588,7 @@ export default function SetlistForm({
         eventDate: eventDate || null,
         startTime: startTime || null,
         venue: venue || null,
-        songs,
+        songs: songsRef.current,
       };
 
       const url = setlistId ? `/api/setlists/${setlistId}` : '/api/setlists';

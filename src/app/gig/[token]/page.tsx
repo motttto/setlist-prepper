@@ -83,6 +83,8 @@ export default function SharedGigPage() {
   const skipAutoSaveCountRef = useRef(0); // Counter for pending remote updates that should skip auto-save
   const isRemoteUpdateRef = useRef(false); // Flag to prevent re-broadcasting remote updates
   const updatedAtRef = useRef(updatedAt); // Ref for synchronous access in auto-save
+  const songsRef = useRef(songs); // Ref for synchronous access in auto-save timeout
+  songsRef.current = songs;
   const AUTO_SAVE_DELAY = 2000;
   const IMMEDIATE_SAVE_DELAY = 300; // Fast save after broadcast so DB stays current
 
@@ -507,7 +509,7 @@ export default function SharedGigPage() {
           eventDate: eventDate || null,
           startTime: startTime || null,
           venue: venue || null,
-          songs,
+          songs: songsRef.current,
           editorName: editorName || 'Unbekannt',
           expectedUpdatedAt: updatedAtRef.current,
         }),
