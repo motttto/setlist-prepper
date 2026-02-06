@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Song, CustomField, CustomFieldType, TransitionType, ActType } from '@/types';
 import { Input, Textarea, Button } from './ui';
 import { Plus, X, Music, Coffee, Star, ExternalLink, ChevronDown, Trash2, Users, Disc3 } from 'lucide-react';
@@ -27,6 +27,11 @@ export default function SongDetailsPanel({
   const [newFieldName, setNewFieldName] = useState('');
   const [newFieldType, setNewFieldType] = useState<CustomFieldType>('text');
   const [newDropdownOptions, setNewDropdownOptions] = useState('');
+
+  // Reset newMediaLink when switching songs
+  useEffect(() => {
+    setNewMediaLink('');
+  }, [song?.id]);
 
   if (!song) {
     return (
@@ -225,6 +230,17 @@ export default function SongDetailsPanel({
                     className="flex-1"
                     onKeyDown={(e) => e.key === 'Enter' && addMediaLink()}
                   />
+                  {newMediaLink.trim() && (
+                    <a
+                      href={newMediaLink.trim().startsWith('http') ? newMediaLink.trim() : `https://${newMediaLink.trim()}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors"
+                      title="Link in neuem Tab öffnen"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  )}
                   <Button
                     type="button"
                     variant="secondary"
@@ -387,6 +403,17 @@ export default function SongDetailsPanel({
                     className="flex-1"
                     onKeyDown={(e) => e.key === 'Enter' && addMediaLink()}
                   />
+                  {newMediaLink.trim() && (
+                    <a
+                      href={newMediaLink.trim().startsWith('http') ? newMediaLink.trim() : `https://${newMediaLink.trim()}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors"
+                      title="Link in neuem Tab öffnen"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  )}
                   <Button
                     type="button"
                     variant="secondary"
